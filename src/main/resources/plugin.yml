@@ -1,0 +1,9 @@
+name: AIBuild
+version: '1.0-SNAPSHOT'
+main: com.github.FortyTwoFortyTwo.AIBuild
+api-version: '1.21'
+load: STARTUP
+prefix: Build
+authors: [ FortyTwoFortyTwo ]
+description: Does AI know how to play Minecraft?
+website: github.com/FortyTwoFortyTwo

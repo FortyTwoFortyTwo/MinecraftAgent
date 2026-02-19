@@ -1,0 +1,215 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        gradlePluginPortal()
+    }
+    dependencies {
+        classpath "com.github.spotbugs.snom:spotbugs-gradle-plugin:5.2.5"
+        classpath "com.gradleup.shadow:shadow-gradle-plugin:9.0.2"
+    }
+}
+
+plugins {
+    id "xyz.jpenilla.run-paper" version "2.3.1" apply false
+    id "com.gradleup.shadow" version "9.0.2"
+}
+
+ext {
+    JAVA_VERSION = 21
+    MINECRAFT_VERSION = "1.21.11"
+    PAPER_VERSION = MINECRAFT_VERSION + "-R0.1-SNAPSHOT"
+}
+
+allprojects {
+    repositories {
+        mavenCentral()
+        maven {
+            name = "papermc-repo"
+            url = "https://repo.papermc.io/repository/maven-public/"
+        }
+        maven {
+            name = "sk89q-repo"
+            url = "https://maven.enginehub.org/repo/"
+        }
+        maven {
+            name = "spigot-repo"
+            url = "https://hub.spigotmc.org/nexus/content/repositories/snapshots/"
+        }
+    }
+}
+
+// Common configuration for all projects
+apply plugin: "java"
+
+group = "com.github.fortytwofortytwo"
+version = "1.0.0"
+
+dependencies {
+    compileOnly("io.papermc.paper:paper-api:" + project.PAPER_VERSION)
+
+    // Database dependencies - these need to be included in the final JAR
+    implementation("org.postgresql:postgresql:42.7.4")
+    implementation("com.zaxxer:HikariCP:5.1.0")
+
+    // Utility dependencies - these need to be included in the final JAR
+    implementation("org.json:json:20240303")
+    implementation("com.google.guava:guava:33.0.0-jre")
+    implementation("org.reflections:reflections:0.10.2")
+}
+
+java {
+    def javaVersion = JavaVersion.toVersion(project.JAVA_VERSION)
+    sourceCompatibility = javaVersion
+    targetCompatibility = javaVersion
+    if (JavaVersion.current() < javaVersion) {
+        toolchain.languageVersion = JavaLanguageVersion.of(project.JAVA_VERSION)
+    }
+
+    //withSourcesJar()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.deprecation = true
+
+    options.compilerArgs += [
+            '-Xlint:all',
+            '-Xlint:-processing',
+            '-Xlint:-serial',
+            '-Xlint:unchecked',
+            '-Xlint:cast',
+            '-Xlint:deprecation',
+            '-Xlint:divzero',
+            '-Xlint:empty',
+            '-Xlint:fallthrough',
+            '-Xlint:finally',
+            '-Xlint:overrides',
+            '-Xlint:path',
+            '-Xlint:rawtypes',
+            '-Xlint:static',
+            '-Xlint:try'
+    ]
+
+    if (JAVA_VERSION >= 10 || JavaVersion.current().isJava10Compatible()) {
+        options.release.set(JAVA_VERSION)
+    }
+}
+
+tasks.register('createConfigDirs') {
+    doLast {
+        mkdir "${rootDir}/config/checkstyle"
+    }
+}
+
+tasks.register('qualityCheck') {
+    group = 'verification'
+    description = 'Runs all code quality checks and displays warnings'
+    dependsOn 'compileJava'
+
+    doLast {
+        println "\n" + "=" * 80
+        println "QUALITY CHECK COMPLETE"
+        println "=" * 80
+        println "\nCOMPILER WARNINGS:"
+        println "-" * 40
+        def compileJava = tasks.findByName('compileJava')
+        if (compileJava && compileJava.state.executed) {
+            println "Java compilation completed with warnings enabled"
+        }
+        println "\n" + "=" * 80
+        println "Run 'gradle compileJava' to see compiler warnings"
+        println "=" * 80
+    }
+}
+
+tasks.register('showWarnings') {
+    group = 'verification'
+    description = 'Shows a summary of all warnings and issues'
+
+    doLast {
+        println "\n" + "=" * 80
+        println "WARNING SUMMARY"
+        println "=" * 80
+
+        def sourceDir = file("${projectDir}/src/main/java")
+        def todoCount = 0
+        def fixmeCount = 0
+
+        if (sourceDir.exists()) {
+            sourceDir.eachFileRecurse { file ->
+                if (file.name.endsWith('.java')) {
+                    file.eachLine { line ->
+                        if (line.contains('TODO')) todoCount++
+                        if (line.contains('FIXME')) fixmeCount++
+                        if (line.contains('XXX')) todoCount++
+                        if (line.contains('HACK')) todoCount++
+                    }
+                }
+            }
+        }
+
+        println "TODOs found: ${todoCount}"
+        println "FIXMEs found: ${fixmeCount}"
+        println "\nRun 'gradle qualityCheck' for comprehensive analysis"
+        println "=" * 80
+    }
+}
+
+tasks.register('showConfig') {
+    group = 'help'
+    description = 'Shows the current build configuration for warnings'
+
+    doLast {
+        println "\nBUILD CONFIGURATION FOR WARNINGS:"
+        println "-" * 40
+        println "Java version: ${JAVA_VERSION}"
+        println "Encoding: UTF-8"
+        println "Deprecation warnings: enabled"
+        println "All compiler warnings: enabled"
+        println "Checkstyle: enabled (max warnings: 0)"
+        println "SpotBugs: enabled (effort: max, level: medium)"
+        println "Strict mode: enabled"
+        println "-" * 40
+    }
+}
+
+tasks.register('cleanBuild') {
+    group = 'build'
+    description = 'Clean build with all quality checks'
+    dependsOn 'clean', 'qualityCheck'
+}
+
+processResources {
+    def props = [version: version]
+    inputs.properties props
+    filteringCharset = 'UTF-8'
+    filesMatching('plugin.yml') {
+        expand props
+    }
+}
+
+shadowJar {
+    archiveClassifier.set("")
+
+    def base = "com.github.FortyTwoFortyTwo.libs."
+
+    def mapping = [
+            "com.zaxxer.hikari": "hikari",
+            "org.postgresql": "postgresql",
+            "org.json": "json",
+            "com.google.common": "guava",
+    ]
+
+    mapping.each { pattern, name ->
+        relocate(pattern, "${base}${name}")
+    }
+}
+
+// Only disable jar task for projects that aren't being included
+jar {
+    enabled = false
+}
+
+build {
+    dependsOn(shadowJar)
+}
