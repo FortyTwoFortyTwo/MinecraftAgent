@@ -26,16 +26,7 @@ public class AgentCommand extends BukkitCommand {
         }
 
         String message = String.join(" ", args);
-
-        Bukkit.getScheduler().runTask(MinecraftTools.plugin, () -> {
-            try {
-                String result = anthropic.sendMessage(sender, message);
-                sender.sendMessage(result);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
-
+        anthropic.sendMessage(sender, message);
         return true;
     }
 }

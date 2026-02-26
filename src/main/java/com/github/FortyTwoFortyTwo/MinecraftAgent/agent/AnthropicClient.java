@@ -7,6 +7,7 @@ import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 
@@ -34,7 +35,7 @@ public class AnthropicClient {
         this.apiKey = config.getString("anthropic.secret");
     }
 
-    public String sendMessage(CommandSender sender, String userMessage) throws IOException {
+    public void sendMessage(CommandSender sender, String userMessage) {
         List<JsonObject> messages = new ArrayList<>();
 
         JsonObject userMsg = new JsonObject();
@@ -42,14 +43,22 @@ public class AnthropicClient {
         userMsg.addProperty("content", userMessage);
         messages.add(userMsg);
 
-        // Agentic loop — keep going until Claude gives a text response with no tool calls
-        while (true) {
-            JsonObject body = new JsonObject();
-            body.addProperty("model", model);
-            body.addProperty("max_tokens", maxTokens);
-            body.add("tools", buildToolDefinitions());
-            body.add("messages", MinecraftTools.GSON.toJsonTree(messages));
-            body.addProperty("system", """
+        Bukkit.getScheduler().runTaskLater(MinecraftTools.plugin, () -> {
+            try {
+                doRequest(sender, messages);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }, 1L);
+    }
+
+    private void doRequest(CommandSender sender, List<JsonObject> messages) throws IOException {
+        JsonObject body = new JsonObject();
+        body.addProperty("model", model);
+        body.addProperty("max_tokens", maxTokens);
+        body.add("tools", buildToolDefinitions());
+        body.add("messages", MinecraftTools.GSON.toJsonTree(messages));
+        body.addProperty("system", """
     You are an AI agent embedded in a Minecraft server with full operator-level control.
     Use your available tools proactively to fulfil requests rather than just describing what you would do.
     Your response will be printed directly in Minecraft chat. Keep responses concise and use
@@ -57,76 +66,86 @@ public class AnthropicClient {
     your output readable. Do not use markdown — it will not render in game.
     """);
 
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("https://api.anthropic.com/v1/messages"))
-                    .header("x-api-key", apiKey)
-                    .header("anthropic-version", "2023-06-01")
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(MinecraftTools.GSON.toJson(body)))
-                    .build();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://api.anthropic.com/v1/messages"))
+                .header("x-api-key", apiKey)
+                .header("anthropic-version", "2023-06-01")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(MinecraftTools.GSON.toJson(body)))
+                .build();
 
-            JsonObject response;
-            try {
-                var httpResponse = http.send(request, HttpResponse.BodyHandlers.ofString());
-                response = MinecraftTools.GSON.fromJson(httpResponse.body(), JsonObject.class);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new IOException("Interrupted", e);
-            }
+        JsonObject response;
+        try {
+            var httpResponse = http.send(request, HttpResponse.BodyHandlers.ofString());
+            response = MinecraftTools.GSON.fromJson(httpResponse.body(), JsonObject.class);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Interrupted", e);
+        }
 
-            if (response.get("type").getAsString().equals("error"))
-                return response.get("error").toString();
+        if (response.get("type").getAsString().equals("error")) {
+            sender.sendMessage(response.get("message").toString());
+            return;
+        }
 
-            String stopReason = response.get("stop_reason").getAsString();
-            JsonArray contentArray = response.getAsJsonArray("content");
+        String stopReason = response.get("stop_reason").getAsString();
+        JsonArray contentArray = response.getAsJsonArray("content");
 
-            // Add Claude's response to message history
-            JsonObject assistantMsg = new JsonObject();
-            assistantMsg.addProperty("role", "assistant");
-            assistantMsg.add("content", contentArray);
-            messages.add(assistantMsg);
+        // Add Claude's response to message history
+        JsonObject assistantMsg = new JsonObject();
+        assistantMsg.addProperty("role", "assistant");
+        assistantMsg.add("content", contentArray);
+        messages.add(assistantMsg);
 
-            if (stopReason.equals("end_turn")) {
-                // Final text response — find and return the text block
-                for (var element : contentArray) {
-                    JsonObject block = element.getAsJsonObject();
-                    if (block.get("type").getAsString().equals("text")) {
-                        return block.get("text").getAsString();
-                    }
+        if (stopReason.equals("end_turn")) {
+            // Final text response — find and return the text block
+            for (var element : contentArray) {
+                JsonObject block = element.getAsJsonObject();
+                if (block.get("type").getAsString().equals("text")) {
+                    sender.sendMessage(block.get("text").getAsString());
+                    return;
                 }
-            }
-
-            if (stopReason.equals("tool_use")) {
-                // Handle all tool calls and collect results
-                JsonArray toolResults = new com.google.gson.JsonArray();
-
-                for (var element : contentArray) {
-                    JsonObject block = element.getAsJsonObject();
-                    if (!block.get("type").getAsString().equals("tool_use")) continue;
-
-                    String toolName = block.get("name").getAsString();
-                    String toolUseId = block.get("id").getAsString();
-                    JsonObject input = block.getAsJsonObject("input");
-                    input.addProperty("sender", sender.getName());
-
-                    // Call the actual tool on the Bukkit bridge
-                    JsonElement toolResult = callTool(toolName, input);
-                    String stringResult = MinecraftTools.GSON.toJson(toolResult);
-
-                    JsonObject resultBlock = new JsonObject();
-                    resultBlock.addProperty("type", "tool_result");
-                    resultBlock.addProperty("tool_use_id", toolUseId);
-                    resultBlock.addProperty("content", stringResult);
-                    toolResults.add(resultBlock);
-                }
-
-                // Add tool results as a user message and loop again
-                JsonObject toolResultMsg = new JsonObject();
-                toolResultMsg.addProperty("role", "user");
-                toolResultMsg.add("content", toolResults);
-                messages.add(toolResultMsg);
             }
         }
+
+        if (stopReason.equals("tool_use")) {
+            // Handle all tool calls and collect results
+            JsonArray toolResults = new com.google.gson.JsonArray();
+
+            for (var element : contentArray) {
+                JsonObject block = element.getAsJsonObject();
+                if (!block.get("type").getAsString().equals("tool_use")) continue;
+
+                String toolName = block.get("name").getAsString();
+                String toolUseId = block.get("id").getAsString();
+                JsonObject input = block.getAsJsonObject("input");
+                input.addProperty("sender", sender.getName());
+
+                // Call the actual tool on the Bukkit bridge
+                JsonElement toolResult = callTool(toolName, input);
+                String stringResult = MinecraftTools.GSON.toJson(toolResult);
+
+                JsonObject resultBlock = new JsonObject();
+                resultBlock.addProperty("type", "tool_result");
+                resultBlock.addProperty("tool_use_id", toolUseId);
+                resultBlock.addProperty("content", stringResult);
+                toolResults.add(resultBlock);
+            }
+
+            // Add tool results as a user message and loop again
+            JsonObject toolResultMsg = new JsonObject();
+            toolResultMsg.addProperty("role", "user");
+            toolResultMsg.add("content", toolResults);
+            messages.add(toolResultMsg);
+        }
+
+        Bukkit.getScheduler().runTaskLater(MinecraftTools.plugin, () -> {
+            try {
+                doRequest(sender, messages);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }, 1L);
     }
 
     /** Calls the appropriate Bukkit bridge endpoint for a given tool */
