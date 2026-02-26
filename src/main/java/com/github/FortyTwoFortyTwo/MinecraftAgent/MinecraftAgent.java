@@ -6,16 +6,16 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public class MinecraftAgent extends JavaPlugin {
 
-    private BridgeHttpServer bridgeServer;
+    private com.github.FortyTwoFortyTwo.MinecraftAgent.BridgeHttpServer bridgeServer;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
 
         int port = getConfig().getInt("bridge.port", 25580);
-        String secret = getConfig().getString("bridge.secret", "change-me");
+        String secret = getConfig().getString("bridge.secret", "super-secret-password");
 
-        bridgeServer = new BridgeHttpServer(this, port, secret);
+        bridgeServer = new com.github.FortyTwoFortyTwo.MinecraftAgent.BridgeHttpServer(this, port, secret);
 
         try {
             bridgeServer.start();

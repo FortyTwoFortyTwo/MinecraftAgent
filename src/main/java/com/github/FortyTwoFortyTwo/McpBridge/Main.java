@@ -14,7 +14,7 @@ public class Main {
         // Read config from environment variables so you don't hardcode secrets
         // Set these in claude_desktop_config.json under "env"
         String bridgeUrl = System.getenv().getOrDefault("MC_BRIDGE_URL", "http://127.0.0.1:25580");
-        String secret    = System.getenv().getOrDefault("MC_BRIDGE_SECRET", "change-me-to-a-random-secret");
+        String secret    = System.getenv().getOrDefault("MC_BRIDGE_SECRET", "super-secret-password");
 
         MinecraftBridgeClient client = new MinecraftBridgeClient(bridgeUrl, secret);
 

@@ -136,6 +136,7 @@ dependencies {
 
     // ── McpBridge (standalone MCP JAR) ──────────────────────────────────────
     mcpBridgeImplementation("io.modelcontextprotocol.sdk:mcp:0.18.1")
+    mcpBridgeImplementation("com.google.code.gson:gson:2.13.2")
 
     // ── Shared ──────────────────────────────────────────────────────────────
     sharedImplementation("com.google.code.gson:gson:2.13.2")
@@ -208,7 +209,9 @@ build {
 }
 
 processResources {
-    // Scope this only to the minecraftAgent source set's resources
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE  // ← fix the duplicate error
+
+    // Clear default source dirs and only use minecraftAgent's resources
     from(sourceSets.minecraftAgent.resources)
     def props = [version: version]
     inputs.properties props

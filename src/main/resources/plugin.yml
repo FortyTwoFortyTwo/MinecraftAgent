@@ -1,9 +1,9 @@
 name: MinecraftAgent
 version: '1.0-SNAPSHOT'
-main: com.github.FortyTwoFortyTwo.MinecraftAgent
+main: com.github.FortyTwoFortyTwo.MinecraftAgent.MinecraftAgent
 api-version: '1.21'
 load: STARTUP
-prefix: Build
+prefix: Agent
 authors: [ FortyTwoFortyTwo ]
 description: Does AI know how to play Minecraft?
 website: github.com/FortyTwoFortyTwo
