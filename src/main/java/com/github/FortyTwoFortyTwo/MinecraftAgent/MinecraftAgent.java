@@ -1,5 +1,6 @@
 package com.github.FortyTwoFortyTwo.MinecraftAgent;
 
+import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -10,6 +11,8 @@ public class MinecraftAgent extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        MinecraftTools.plugin = this;
+
         saveDefaultConfig();
 
         int port = getConfig().getInt("bridge.port", 25580);
