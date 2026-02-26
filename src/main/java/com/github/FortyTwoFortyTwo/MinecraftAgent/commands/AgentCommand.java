@@ -1,0 +1,41 @@
+package com.github.FortyTwoFortyTwo.MinecraftAgent.commands;
+
+import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.AnthropicClient;
+import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
+import org.bukkit.Bukkit;
+import org.bukkit.command.CommandSender;
+import org.bukkit.command.defaults.BukkitCommand;
+import org.jetbrains.annotations.NotNull;
+
+import java.io.IOException;
+
+public class AgentCommand extends BukkitCommand {
+
+    private final AnthropicClient anthropic;
+
+    public AgentCommand(AnthropicClient anthropic) {
+        super("agent");
+        this.anthropic = anthropic;
+    }
+
+    @Override
+    public boolean execute(@NotNull CommandSender sender, @NotNull String commandLabel, @NotNull String @NotNull [] args) {
+        if (!sender.hasPermission("minecraft.command.op")) {
+            sender.sendMessage("§cYou don't have permission to use this command.");
+            return true;
+        }
+
+        String message = String.join(" ", args);
+
+        Bukkit.getScheduler().runTask(MinecraftTools.plugin, () -> {
+            try {
+                String result = anthropic.sendMessage(message);
+                sender.sendMessage(result);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+
+        return true;
+    }
+}

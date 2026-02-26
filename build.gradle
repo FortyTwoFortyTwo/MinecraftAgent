@@ -45,7 +45,7 @@ allprojects {
 apply plugin: "java"
 apply plugin: "com.gradleup.shadow"
 
-group = "com.github.fortytwofortytwo"
+group = "com.github.FortyTwoFortyTwo"
 version = "1.0.0"
 
 java {
@@ -133,6 +133,7 @@ sourceSets {
 dependencies {
     // ── MinecraftAgent (Bukkit plugin) ──────────────────────────────────────
     minecraftAgentCompileOnly("io.papermc.paper:paper-api:" + project.PAPER_VERSION)
+    minecraftAgentImplementation("io.modelcontextprotocol.sdk:mcp-json-jackson2:0.18.1")
 
     // ── McpBridge (standalone MCP JAR) ──────────────────────────────────────
     mcpBridgeImplementation("io.papermc.paper:paper-api:" + project.PAPER_VERSION)

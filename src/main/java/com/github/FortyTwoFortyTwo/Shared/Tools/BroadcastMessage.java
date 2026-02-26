@@ -20,10 +20,8 @@ public class BroadcastMessage implements com.github.FortyTwoFortyTwo.Shared.Mine
     public Map<String, Serializable> execute(JsonObject input) {
         String message = input.has("message") ? input.get("message").getAsString() : "";
 
-        if (message.isEmpty()) {
-            throwError("Missing 'message' field");
-            return null;
-        }
+        if (message.isEmpty())
+            return Map.of("error", "Missing 'message' field");
 
         Bukkit.broadcastMessage("§6[AI] §f" + message);
 

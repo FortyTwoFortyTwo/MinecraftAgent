@@ -21,10 +21,8 @@ public class RunConsoleCommand implements com.github.FortyTwoFortyTwo.Shared.Min
     public Map<String, Serializable> execute(JsonObject input) {
         String command = input.has("command") ? input.get("command").getAsString() : "";
 
-        if (command.isEmpty()) {
-            throwError("Missing 'command' field");
-            return null;
-        }
+        if (command.isEmpty())
+            return Map.of("error", "Missing 'command' field");
 
         // Strip leading slash if present
         final String cmd = command.startsWith("/") ? command.substring(1) : command;

@@ -4,7 +4,6 @@ import com.google.gson.JsonObject;
 import com.sun.net.httpserver.HttpExchange;
 import io.modelcontextprotocol.spec.McpSchema;
 
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Map;
@@ -38,13 +37,5 @@ public interface MinecraftTool {
     default boolean isAuthorized(HttpExchange exchange, String secret) {
         String header = exchange.getRequestHeaders().getFirst("X-MCP-Secret");
         return secret.equals(header);
-    }
-
-    default void throwError(String message) {
-        try {
-            MinecraftTools.sendJson(MinecraftTools.exchange, 400, Map.of("error", message));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
     }
 }

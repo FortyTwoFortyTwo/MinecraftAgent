@@ -1,13 +1,16 @@
 package com.github.FortyTwoFortyTwo.MinecraftAgent;
 
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandSender;
+import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.AnthropicClient;
+import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.BridgeHttpServer;
+import com.github.FortyTwoFortyTwo.MinecraftAgent.commands.AgentCommand;
+import org.bukkit.Bukkit;
+import org.bukkit.command.CommandMap;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class MinecraftAgent extends JavaPlugin {
 
-    private com.github.FortyTwoFortyTwo.MinecraftAgent.BridgeHttpServer bridgeServer;
+    private BridgeHttpServer bridgeServer;
 
     @Override
     public void onEnable() {
@@ -18,7 +21,12 @@ public class MinecraftAgent extends JavaPlugin {
         int port = getConfig().getInt("bridge.port", 25580);
         String secret = getConfig().getString("bridge.secret", "super-secret-password");
 
-        bridgeServer = new com.github.FortyTwoFortyTwo.MinecraftAgent.BridgeHttpServer(this, port, secret);
+        bridgeServer = new BridgeHttpServer(this, port, secret);
+        AnthropicClient anthropic = new AnthropicClient(getConfig());
+
+        CommandMap commandMap = Bukkit.getServer().getCommandMap();
+
+        commandMap.register("agent", new AgentCommand(anthropic));
 
         try {
             bridgeServer.start();
@@ -35,32 +43,5 @@ public class MinecraftAgent extends JavaPlugin {
             bridgeServer.stop();
             getLogger().info("MCP Bridge HTTP server stopped.");
         }
-    }
-
-    @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!command.getName().equalsIgnoreCase("mcpbridge")) return false;
-        if (!sender.hasPermission("mcpbridge.admin")) {
-            sender.sendMessage("§cYou don't have permission to use this command.");
-            return true;
-        }
-
-        if (args.length == 0) {
-            sender.sendMessage("§6Usage: /mcpbridge <reload|status>");
-            return true;
-        }
-
-        switch (args[0].toLowerCase()) {
-            case "reload":
-                reloadConfig();
-                sender.sendMessage("§aConfig reloaded. Restart the plugin to apply port/secret changes.");
-                break;
-            case "status":
-                sender.sendMessage("§aMCP Bridge is running on port §f" + getConfig().getInt("bridge.port", 25580));
-                break;
-            default:
-                sender.sendMessage("§cUnknown subcommand. Use: reload, status");
-        }
-        return true;
     }
 }

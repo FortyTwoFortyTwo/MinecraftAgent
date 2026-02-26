@@ -1,0 +1,8 @@
+bridge:
+  port: 25580
+  secret: "super-secret-password"
+
+anthropic:
+  model: "claude-sonnet-4-6"
+  max-tokens: 1024
+  secret: "your-secret-key-here"

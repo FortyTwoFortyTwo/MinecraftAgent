@@ -7,6 +7,7 @@ import com.sun.net.httpserver.HttpExchange;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpSchema.*;
+import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.IOException;
@@ -14,6 +15,7 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
 /**
  * Defines all MCP tools exposed to Claude Desktop.
@@ -23,7 +25,6 @@ public class MinecraftTools {
 
     static public final Gson GSON = new Gson();
     static public JavaPlugin plugin;
-    static public HttpExchange exchange;
 
     static public List<com.github.FortyTwoFortyTwo.Shared.MinecraftTool> list = List.of(
             new BroadcastMessage(),
@@ -40,6 +41,16 @@ public class MinecraftTools {
         exchange.sendResponseHeaders(status, bytes.length);
         try (OutputStream os = exchange.getResponseBody()) {
             os.write(bytes);
+        }
+    }
+
+    /** Runs a callable on Bukkit's main thread and blocks until it returns */
+    static public <T> T runOnMainThread(Callable<T> callable) {
+        try {
+            return Bukkit.getScheduler().callSyncMethod(plugin, callable).get();
+        } catch (Exception e) {
+            plugin.getLogger().warning("Error running task on main thread: " + e.getMessage());
+            return null;
         }
     }
 }

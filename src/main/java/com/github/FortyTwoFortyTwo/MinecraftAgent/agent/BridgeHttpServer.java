@@ -1,4 +1,4 @@
-package com.github.FortyTwoFortyTwo.MinecraftAgent;
+package com.github.FortyTwoFortyTwo.MinecraftAgent.agent;
 
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTool;
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
@@ -6,14 +6,12 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
-import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
-import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 
 public class BridgeHttpServer {
@@ -51,7 +49,7 @@ public class BridgeHttpServer {
     // -------------------------------------------------------------------------
 
     private void handle(HttpExchange exchange) {
-        runOnMainThread(() -> {
+        MinecraftTools.runOnMainThread(() -> {
             String path = exchange.getRequestURI().getPath();
 
             for (MinecraftTool tool : MinecraftTools.list) {
@@ -64,7 +62,9 @@ public class BridgeHttpServer {
                 }
 
                 Map<String, Serializable> result = tool.execute(readBody(exchange));
-                if (result != null) // if null, assuming that throwError has been used
+                if (result.containsKey("error"))
+                    MinecraftTools.sendJson(exchange, 400, result);
+                else
                     MinecraftTools.sendJson(exchange, 200, result);
 
                 return null;
@@ -78,16 +78,6 @@ public class BridgeHttpServer {
     // -------------------------------------------------------------------------
     // Utilities
     // -------------------------------------------------------------------------
-
-    /** Runs a callable on Bukkit's main thread and blocks until it returns */
-    private <T> T runOnMainThread(Callable<T> callable) {
-        try {
-            return Bukkit.getScheduler().callSyncMethod(plugin, callable).get();
-        } catch (Exception e) {
-            plugin.getLogger().warning("Error running task on main thread: " + e.getMessage());
-            return null;
-        }
-    }
 
     private JsonObject readBody(HttpExchange exchange) throws IOException {
         String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
