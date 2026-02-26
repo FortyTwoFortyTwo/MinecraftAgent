@@ -20,6 +20,10 @@ ext {
     PAPER_VERSION = MINECRAFT_VERSION + "-R0.1-SNAPSHOT"
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared config for ALL source sets (plugin + bridge)
+// ─────────────────────────────────────────────────────────────────────────────
+
 allprojects {
     repositories {
         mavenCentral()
@@ -38,24 +42,11 @@ allprojects {
     }
 }
 
-// Common configuration for all projects
 apply plugin: "java"
+apply plugin: "com.gradleup.shadow"
 
 group = "com.github.fortytwofortytwo"
 version = "1.0.0"
-
-dependencies {
-    compileOnly("io.papermc.paper:paper-api:" + project.PAPER_VERSION)
-
-    // Database dependencies - these need to be included in the final JAR
-    implementation("org.postgresql:postgresql:42.7.4")
-    implementation("com.zaxxer:HikariCP:5.1.0")
-
-    // Utility dependencies - these need to be included in the final JAR
-    implementation("org.json:json:20240303")
-    implementation("com.google.guava:guava:33.0.0-jre")
-    implementation("org.reflections:reflections:0.10.2")
-}
 
 java {
     def javaVersion = JavaVersion.toVersion(project.JAVA_VERSION)
@@ -64,8 +55,6 @@ java {
     if (JavaVersion.current() < javaVersion) {
         toolchain.languageVersion = JavaLanguageVersion.of(project.JAVA_VERSION)
     }
-
-    //withSourcesJar()
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -95,6 +84,144 @@ tasks.withType(JavaCompile).configureEach {
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Source sets
+//   MinecraftAgent  →  Bukkit plugin JAR  (shaded)
+//   McpBridge       →  Standalone MCP JAR (shaded, has Main)
+//   Shared          →  Shared deps
+// ─────────────────────────────────────────────────────────────────────────────
+
+sourceSets {
+    main {
+        java {
+            srcDirs = [] // disable default src/main/java so nothing leaks into both
+        }
+    }
+
+    shared {
+        java {
+            srcDirs = ["src/main/java/com/github/FortyTwoFortyTwo/Shared"]
+        }
+    }
+
+    minecraftAgent {
+        java {
+            srcDirs = ["src/main/java/com/github/FortyTwoFortyTwo/MinecraftAgent"]
+        }
+        resources {
+            srcDirs = ["src/main/resources"]
+        }
+        // Makes Shared classes visible to MinecraftAgent at compile time
+        compileClasspath += sourceSets.shared.output
+        runtimeClasspath += sourceSets.shared.output
+    }
+
+    mcpBridge {
+        java {
+            srcDirs = ["src/main/java/com/github/FortyTwoFortyTwo/McpBridge"]
+        }
+        // Makes Shared classes visible to McpBridge at compile time
+        compileClasspath += sourceSets.shared.output
+        runtimeClasspath += sourceSets.shared.output
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Dependencies per source set
+// ─────────────────────────────────────────────────────────────────────────────
+
+dependencies {
+    // ── MinecraftAgent (Bukkit plugin) ──────────────────────────────────────
+    minecraftAgentCompileOnly("io.papermc.paper:paper-api:" + project.PAPER_VERSION)
+
+    // ── McpBridge (standalone MCP JAR) ──────────────────────────────────────
+    mcpBridgeImplementation("io.modelcontextprotocol.sdk:mcp:0.18.1")
+
+    // ── Shared ──────────────────────────────────────────────────────────────
+    sharedImplementation("com.google.code.gson:gson:2.13.2")
+    sharedImplementation("io.modelcontextprotocol.sdk:mcp:0.18.1")
+    sharedImplementation("io.modelcontextprotocol.sdk:mcp-json-jackson2:0.18.1")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shadow JAR — MinecraftAgent plugin
+// ─────────────────────────────────────────────────────────────────────────────
+
+tasks.register("shadowMinecraftAgent", com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
+    group = "build"
+    description = "Builds the shaded Bukkit plugin JAR"
+
+    archiveBaseName.set("MinecraftAgent")
+    archiveClassifier.set("")
+    archiveVersion.set(version)
+
+    from sourceSets.minecraftAgent.output
+    from sourceSets.shared.output
+    configurations = [project.configurations.minecraftAgentRuntimeClasspath]
+
+    def base = "com.github.FortyTwoFortyTwo.libs."
+    relocate("com.zaxxer.hikari",  "${base}hikari")
+    relocate("org.postgresql",     "${base}postgresql")
+    relocate("org.json",           "${base}json")
+    relocate("com.google.common",  "${base}guava")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shadow JAR — McpBridge standalone
+// ─────────────────────────────────────────────────────────────────────────────
+
+tasks.register("shadowMcpBridge", com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
+    group = "build"
+    description = "Builds the shaded standalone MCP bridge JAR"
+
+    archiveBaseName.set("McpBridge")
+    archiveClassifier.set("")
+    archiveVersion.set(version)
+
+    from sourceSets.mcpBridge.output
+    from sourceSets.shared.output
+    configurations = [project.configurations.mcpBridgeRuntimeClasspath]
+
+    manifest {
+        attributes "Main-Class": "com.github.FortyTwoFortyTwo.McpBridge.Main"
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Disable the default jar/shadowJar tasks (we use our own above)
+// ─────────────────────────────────────────────────────────────────────────────
+
+jar {
+    enabled = false
+}
+
+shadowJar {
+    enabled = false
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Wire both into the standard build task
+// ─────────────────────────────────────────────────────────────────────────────
+
+build {
+    dependsOn(shadowMinecraftAgent, shadowMcpBridge)
+}
+
+processResources {
+    // Scope this only to the minecraftAgent source set's resources
+    from(sourceSets.minecraftAgent.resources)
+    def props = [version: version]
+    inputs.properties props
+    filteringCharset = 'UTF-8'
+    filesMatching('plugin.yml') {
+        expand props
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Utility tasks (preserved from original)
+// ─────────────────────────────────────────────────────────────────────────────
+
 tasks.register('createConfigDirs') {
     doLast {
         mkdir "${rootDir}/config/checkstyle"
@@ -104,20 +231,13 @@ tasks.register('createConfigDirs') {
 tasks.register('qualityCheck') {
     group = 'verification'
     description = 'Runs all code quality checks and displays warnings'
-    dependsOn 'compileJava'
+    dependsOn 'compileMinecraftAgentJava', 'compileMcpBridgeJava'
 
     doLast {
         println "\n" + "=" * 80
         println "QUALITY CHECK COMPLETE"
         println "=" * 80
-        println "\nCOMPILER WARNINGS:"
-        println "-" * 40
-        def compileJava = tasks.findByName('compileJava')
-        if (compileJava && compileJava.state.executed) {
-            println "Java compilation completed with warnings enabled"
-        }
-        println "\n" + "=" * 80
-        println "Run 'gradle compileJava' to see compiler warnings"
+        println "\nBoth MinecraftAgent and McpBridge compiled successfully."
         println "=" * 80
     }
 }
@@ -157,18 +277,17 @@ tasks.register('showWarnings') {
 
 tasks.register('showConfig') {
     group = 'help'
-    description = 'Shows the current build configuration for warnings'
+    description = 'Shows the current build configuration'
 
     doLast {
-        println "\nBUILD CONFIGURATION FOR WARNINGS:"
+        println "\nBUILD CONFIGURATION:"
         println "-" * 40
         println "Java version: ${JAVA_VERSION}"
         println "Encoding: UTF-8"
         println "Deprecation warnings: enabled"
-        println "All compiler warnings: enabled"
-        println "Checkstyle: enabled (max warnings: 0)"
-        println "SpotBugs: enabled (effort: max, level: medium)"
-        println "Strict mode: enabled"
+        println "Outputs:"
+        println "  build/libs/MinecraftAgent-${version}.jar  (Bukkit plugin)"
+        println "  build/libs/McpBridge-${version}.jar       (MCP standalone)"
         println "-" * 40
     }
 }
@@ -177,39 +296,4 @@ tasks.register('cleanBuild') {
     group = 'build'
     description = 'Clean build with all quality checks'
     dependsOn 'clean', 'qualityCheck'
-}
-
-processResources {
-    def props = [version: version]
-    inputs.properties props
-    filteringCharset = 'UTF-8'
-    filesMatching('plugin.yml') {
-        expand props
-    }
-}
-
-shadowJar {
-    archiveClassifier.set("")
-
-    def base = "com.github.FortyTwoFortyTwo.libs."
-
-    def mapping = [
-            "com.zaxxer.hikari": "hikari",
-            "org.postgresql": "postgresql",
-            "org.json": "json",
-            "com.google.common": "guava",
-    ]
-
-    mapping.each { pattern, name ->
-        relocate(pattern, "${base}${name}")
-    }
-}
-
-// Only disable jar task for projects that aren't being included
-jar {
-    enabled = false
-}
-
-build {
-    dependsOn(shadowJar)
 }

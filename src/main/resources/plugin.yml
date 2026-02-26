@@ -1,6 +1,6 @@
-name: AIBuild
+name: MinecraftAgent
 version: '1.0-SNAPSHOT'
-main: com.github.FortyTwoFortyTwo.AIBuild
+main: com.github.FortyTwoFortyTwo.MinecraftAgent
 api-version: '1.21'
 load: STARTUP
 prefix: Build
