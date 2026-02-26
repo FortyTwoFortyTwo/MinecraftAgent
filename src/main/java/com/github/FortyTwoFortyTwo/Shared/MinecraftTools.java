@@ -30,6 +30,7 @@ public class MinecraftTools {
             new BroadcastMessage(),
             new GetOnlinePlayers(),
             new GetPlayerLocation(),
+            new GetPlayerPrompt(),
             new GetWorldInfo(),
             new Ping(),
             new RunConsoleCommand()

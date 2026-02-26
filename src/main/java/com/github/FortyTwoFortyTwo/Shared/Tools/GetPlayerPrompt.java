@@ -1,25 +1,20 @@
 package Tools;
 
 import com.google.gson.JsonObject;
-import io.modelcontextprotocol.spec.McpSchema;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 import java.io.Serializable;
 import java.util.Map;
 
-public class GetPlayerLocation implements com.github.FortyTwoFortyTwo.Shared.MinecraftTool {
+public class GetPlayerPrompt implements com.github.FortyTwoFortyTwo.Shared.MinecraftTool {
 
     public String getDescription() {
-        return "Returns the current world, X, Y, Z coordinates of an online player.";
-    }
-
-    public McpSchema.JsonSchema getInputSchema() {
-        return objectSchema(Map.of("player", stringSchema()));
+        return "Returns info about the player who's sending the prompt.";
     }
 
     public Map<String, Serializable> execute(JsonObject input) {
-        String playerName = input.has("player") ? input.get("player").getAsString() : "";
+        String playerName = input.get("sender").getAsString();  // provided by AnthropicClient
 
         Player player = Bukkit.getPlayerExact(playerName);
         if (player == null) return Map.of("error", "Player not found or offline");
@@ -27,6 +22,7 @@ public class GetPlayerLocation implements com.github.FortyTwoFortyTwo.Shared.Min
         var loc = player.getLocation();
         return Map.of(
                 "player", playerName,
+                "uuid", player.getUniqueId().toString(),
                 "world", loc.getWorld().getName(),
                 "x", loc.getX(),
                 "y", loc.getY(),

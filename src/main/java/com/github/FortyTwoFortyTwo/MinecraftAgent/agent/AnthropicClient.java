@@ -7,6 +7,7 @@ import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 
 import java.io.IOException;
@@ -33,7 +34,7 @@ public class AnthropicClient {
         this.apiKey = config.getString("anthropic.secret");
     }
 
-    public String sendMessage(String userMessage) throws IOException {
+    public String sendMessage(CommandSender sender, String userMessage) throws IOException {
         List<JsonObject> messages = new ArrayList<>();
 
         JsonObject userMsg = new JsonObject();
@@ -48,6 +49,13 @@ public class AnthropicClient {
             body.addProperty("max_tokens", maxTokens);
             body.add("tools", buildToolDefinitions());
             body.add("messages", MinecraftTools.GSON.toJsonTree(messages));
+            body.addProperty("system", """
+    You are an AI agent embedded in a Minecraft server with full operator-level control.
+    Use your available tools proactively to fulfil requests rather than just describing what you would do.
+    Your response will be printed directly in Minecraft chat. Keep responses concise and use
+    Minecraft's legacy formatting codes (e.g. §a for green, §b for aqua, §l for bold) to make
+    your output readable. Do not use markdown — it will not render in game.
+    """);
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create("https://api.anthropic.com/v1/messages"))
@@ -99,6 +107,7 @@ public class AnthropicClient {
                     String toolName = block.get("name").getAsString();
                     String toolUseId = block.get("id").getAsString();
                     JsonObject input = block.getAsJsonObject("input");
+                    input.addProperty("sender", sender.getName());
 
                     // Call the actual tool on the Bukkit bridge
                     JsonElement toolResult = callTool(toolName, input);
