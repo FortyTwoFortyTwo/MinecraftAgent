@@ -36,7 +36,7 @@ public class MinecraftBridgeClient {
             var request = HttpRequest.newBuilder()
                     .uri(URI.create(baseUrl + path))
                     .header("X-MCP-Secret", secret)
-                    .timeout(Duration.ofSeconds(10))
+                    .timeout(Duration.ofSeconds(60))
                     .GET()
                     .build();
 
@@ -58,7 +58,7 @@ public class MinecraftBridgeClient {
                     .uri(URI.create(baseUrl + path))
                     .header("Content-Type", "application/json")
                     .header("X-MCP-Secret", secret)
-                    .timeout(Duration.ofSeconds(10))
+                    .timeout(Duration.ofSeconds(60))
                     .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body), StandardCharsets.UTF_8))
                     .build();
 

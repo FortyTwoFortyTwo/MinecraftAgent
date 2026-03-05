@@ -28,6 +28,7 @@ public class AnthropicClient {
     private final int maxTokens;
     private final String apiKey;
     private final HttpClient http = HttpClient.newHttpClient();
+    private int totalTokensUsed = 0;
 
     public AnthropicClient(FileConfiguration config) {
         this.model = config.getString("anthropic.model");
@@ -36,6 +37,7 @@ public class AnthropicClient {
     }
 
     public void sendMessage(CommandSender sender, String userMessage) {
+        totalTokensUsed = 0;    // TODO multiple messages at once
         List<JsonObject> messages = new ArrayList<>();
 
         JsonObject userMsg = new JsonObject();
@@ -71,6 +73,7 @@ public class AnthropicClient {
                 .header("x-api-key", apiKey)
                 .header("anthropic-version", "2023-06-01")
                 .header("Content-Type", "application/json")
+                .timeout(java.time.Duration.ofSeconds(60))
                 .POST(HttpRequest.BodyPublishers.ofString(MinecraftTools.GSON.toJson(body)))
                 .build();
 
@@ -84,9 +87,18 @@ public class AnthropicClient {
         }
 
         if (response.get("type").getAsString().equals("error")) {
-            sender.sendMessage(response.get("message").toString());
+            sender.sendMessage(response.get("error").getAsJsonObject().get("message").getAsString());
             return;
         }
+
+        // Accumulate tokens used in this API call
+        JsonObject usage = response.getAsJsonObject("usage");
+
+        int inputTokens = usage.has("input_tokens") ? usage.get("input_tokens").getAsInt() : 0;
+        int outputTokens = usage.has("output_tokens") ? usage.get("output_tokens").getAsInt() : 0;
+        int tokensUsed = inputTokens + outputTokens;
+        totalTokensUsed += tokensUsed;
+        System.out.println("Accumulated tokens: " + totalTokensUsed + " (input: " + inputTokens + ", output: " + outputTokens + ")");
 
         String stopReason = response.get("stop_reason").getAsString();
         JsonArray contentArray = response.getAsJsonArray("content");
@@ -103,6 +115,8 @@ public class AnthropicClient {
                 JsonObject block = element.getAsJsonObject();
                 if (block.get("type").getAsString().equals("text")) {
                     sender.sendMessage(block.get("text").getAsString());
+                    // Log total tokens used
+                    sender.sendMessage("§7[Tokens used: " + totalTokensUsed + "]");
                     return;
                 }
             }
@@ -123,12 +137,11 @@ public class AnthropicClient {
 
                 // Call the actual tool on the Bukkit bridge
                 JsonElement toolResult = callTool(toolName, input);
-                String stringResult = MinecraftTools.GSON.toJson(toolResult);
 
                 JsonObject resultBlock = new JsonObject();
                 resultBlock.addProperty("type", "tool_result");
                 resultBlock.addProperty("tool_use_id", toolUseId);
-                resultBlock.addProperty("content", stringResult);
+                resultBlock.addProperty("content", MinecraftTools.GSON.toJson(toolResult));
                 toolResults.add(resultBlock);
             }
 
