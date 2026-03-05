@@ -134,6 +134,8 @@ dependencies {
     // ── MinecraftAgent (Bukkit plugin) ──────────────────────────────────────
     minecraftAgentCompileOnly("io.papermc.paper:paper-api:" + project.PAPER_VERSION)
     minecraftAgentImplementation("io.modelcontextprotocol.sdk:mcp-json-jackson2:0.18.1")
+    minecraftAgentImplementation("org.apache.logging.log4j:log4j-core:2.24.3")
+    minecraftAgentImplementation("org.apache.logging.log4j:log4j-api:2.24.3")
 
     // ── McpBridge (standalone MCP JAR) ──────────────────────────────────────
     mcpBridgeImplementation("io.papermc.paper:paper-api:" + project.PAPER_VERSION)
@@ -145,6 +147,8 @@ dependencies {
     sharedImplementation("com.google.code.gson:gson:2.13.2")
     sharedImplementation("io.modelcontextprotocol.sdk:mcp:0.18.1")
     sharedImplementation("io.modelcontextprotocol.sdk:mcp-json-jackson2:0.18.1")
+    sharedImplementation("org.apache.logging.log4j:log4j-core:2.24.3")
+    sharedImplementation("org.apache.logging.log4j:log4j-api:2.24.3")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
