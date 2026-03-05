@@ -31,6 +31,8 @@ public class MinecraftTools {
             new GetOnlinePlayers(),
             new GetPlayerLocation(),
             new GetPlayerPrompt(),
+            new GetRegistryKeys(),
+            new GetRegistryValues(),
             new GetWorldInfo(),
             new Ping(),
             new RunConsoleCommand()
