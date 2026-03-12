@@ -1,13 +1,9 @@
 package com.github.FortyTwoFortyTwo.MinecraftAgent.commands;
 
 import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.AnthropicClient;
-import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
-import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.defaults.BukkitCommand;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.IOException;
 
 public class AgentCommand extends BukkitCommand {
 

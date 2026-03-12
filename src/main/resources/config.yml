@@ -6,3 +6,6 @@ anthropic:
   model: "claude-sonnet-4-6"
   max-tokens: 1024
   secret: "your-secret-key-here"
+
+ide:
+  paths:

@@ -4,6 +4,7 @@ import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.AnthropicClient;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.BridgeHttpServer;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.commands.AgentCommand;
+import commands.IDECommand;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandMap;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -27,6 +28,7 @@ public class MinecraftAgent extends JavaPlugin {
         CommandMap commandMap = Bukkit.getServer().getCommandMap();
 
         commandMap.register("agent", new AgentCommand(anthropic));
+        commandMap.register("ide", new IDECommand(getConfig()));
 
         try {
             bridgeServer.start();
