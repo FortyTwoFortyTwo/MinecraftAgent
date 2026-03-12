@@ -136,6 +136,7 @@ dependencies {
     minecraftAgentImplementation("io.modelcontextprotocol.sdk:mcp-json-jackson2:0.18.1")
     minecraftAgentImplementation("org.apache.logging.log4j:log4j-core:2.24.3")
     minecraftAgentImplementation("org.apache.logging.log4j:log4j-api:2.24.3")
+    minecraftAgentImplementation("org.jetbrains.pty4j:pty4j:0.13.4")
 
     // ── McpBridge (standalone MCP JAR) ──────────────────────────────────────
     mcpBridgeImplementation("io.papermc.paper:paper-api:" + project.PAPER_VERSION)
