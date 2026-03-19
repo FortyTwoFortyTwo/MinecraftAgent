@@ -63,7 +63,7 @@ public class AnthropicClient {
         body.addProperty("system", """
     You are an AI agent embedded in a Minecraft server with full operator-level control.
     Use your available tools proactively to fulfil requests rather than just describing what you would do.
-    Your response will be printed directly in Minecraft chat. Keep responses concise and use
+    All of your text responses will be printed directly in Minecraft chat. Keep responses concise and use
     Minecraft's legacy formatting codes (e.g. §a for green, §b for aqua, §l for bold) to make
     your output readable. Do not use markdown — it will not render in game.
     """);
@@ -117,6 +117,8 @@ public class AnthropicClient {
             for (var element : contentArray) {
                 JsonObject block = element.getAsJsonObject();
                 String type = block.get("type").getAsString();
+
+                System.out.println("Execute " + type + " (" + block + ")");
 
                 if (type.equals("text")) {
                     sender.sendMessage(block.get("text").getAsString());
@@ -180,11 +182,17 @@ public class AnthropicClient {
         for (MinecraftTool tool : MinecraftTools.list) {
             JsonObject object = new JsonObject();
             object.addProperty("name", tool.getName());
-            object.addProperty("description", tool.getDescription());
 
-            String json = MAPPER.writeValueAsString(tool.getInputSchema());
-            JsonElement schema = MinecraftTools.GSON.fromJson(json, JsonElement.class);
-            object.add("input_schema", schema);
+            if (tool.getDescription() != null)
+                object.addProperty("description", tool.getDescription());
+
+            if (tool.getType() != null) {
+                object.addProperty("type", tool.getType());
+            } else {
+                String json = MAPPER.writeValueAsString(tool.getInputSchema());
+                JsonElement schema = MinecraftTools.GSON.fromJson(json, JsonElement.class);
+                object.add("input_schema", schema);
+            }
 
             array.add(object);
         }

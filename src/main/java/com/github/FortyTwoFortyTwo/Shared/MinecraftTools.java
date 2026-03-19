@@ -35,7 +35,8 @@ public class MinecraftTools {
             new GetRegistryValues(),
             new GetWorldInfo(),
             new Ping(),
-            new RunConsoleCommand()
+            new RunConsoleCommand(),
+            new TextEditor()
     );
 
     static public void sendJson(HttpExchange exchange, int status, Object data) throws IOException {

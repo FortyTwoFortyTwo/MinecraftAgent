@@ -10,9 +10,17 @@ import java.util.Map;
 
 public interface MinecraftTool {
 
-    String getDescription();
+    default String getType() {
+        return null;
+    }
 
-    Map<String, Serializable> execute(JsonObject input);
+    default String getDescription() {
+        return null;
+    }
+
+    default Map<String, Serializable> execute(JsonObject input) {
+        return null;
+    }
 
     default String getName() {
         return getClass().getSimpleName();
