@@ -36,7 +36,7 @@ public class AnthropicClient {
         this.apiKey = config.getString("anthropic.secret");
     }
 
-    public void sendMessage(CommandSender sender, String userMessage) {
+    public void sendMessage(CommandSender sender, String userMessage, String system) {
         totalTokensUsed = 0;    // TODO multiple messages at once
         List<JsonObject> messages = new ArrayList<>();
 
@@ -47,22 +47,20 @@ public class AnthropicClient {
 
         Bukkit.getScheduler().runTaskLater(MinecraftTools.plugin, () -> {
             try {
-                doRequest(sender, messages);
+                doRequest(sender, messages, system);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }, 1L);
     }
 
-    private void doRequest(CommandSender sender, List<JsonObject> messages) throws IOException {
+    private void doRequest(CommandSender sender, List<JsonObject> messages, String system) throws IOException {
         JsonObject body = new JsonObject();
         body.addProperty("model", model);
         body.addProperty("max_tokens", maxTokens);
         body.add("tools", buildToolDefinitions());
         body.add("messages", MinecraftTools.GSON.toJsonTree(messages));
-        body.addProperty("system", """
-    You are an AI agent embedded in a Minecraft server with full operator-level control.
-    Use your available tools proactively to fulfil requests rather than just describing what you would do.
+        body.addProperty("system", system + """
     All of your text responses will be printed directly in Minecraft chat. Keep responses concise and use
     Minecraft's legacy formatting codes (e.g. §a for green, §b for aqua, §l for bold) to make
     your output readable. Do not use markdown — it will not render in game.
@@ -154,7 +152,7 @@ public class AnthropicClient {
 
         Bukkit.getScheduler().runTaskLater(MinecraftTools.plugin, () -> {
             try {
-                doRequest(sender, messages);
+                doRequest(sender, messages, system);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
