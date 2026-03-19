@@ -34,6 +34,8 @@ public class ErrorCatcherAppender extends AbstractAppender {
 
         String message = event.getMessage().getFormattedMessage();
         Throwable thrown = event.getThrown();
+        if (thrown == null)
+            return;
 
         // Get just the message and first line of the trace to detect if its a dupe
         StackTraceElement[] trace = thrown.getStackTrace();
