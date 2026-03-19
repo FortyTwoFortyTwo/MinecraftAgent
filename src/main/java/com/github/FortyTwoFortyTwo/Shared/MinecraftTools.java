@@ -34,7 +34,9 @@ public class MinecraftTools {
             new GetRegistryKeys(),
             new GetRegistryValues(),
             new GetWorldInfo(),
+            new ListWorkingDirectories(),
             new Ping(),
+            new ResolvePath(),
             new RunConsoleCommand(),
             new TextEditor()
     );
