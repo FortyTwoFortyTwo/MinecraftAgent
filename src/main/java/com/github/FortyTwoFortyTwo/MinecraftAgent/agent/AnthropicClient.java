@@ -98,10 +98,11 @@ public class AnthropicClient {
         int outputTokens = usage.has("output_tokens") ? usage.get("output_tokens").getAsInt() : 0;
         int tokensUsed = inputTokens + outputTokens;
         totalTokensUsed += tokensUsed;
-        System.out.println("Accumulated tokens: " + totalTokensUsed + " (input: " + inputTokens + ", output: " + outputTokens + ")");
 
         String stopReason = response.get("stop_reason").getAsString();
         JsonArray contentArray = response.getAsJsonArray("content");
+
+        System.out.println("Accumulated tokens: " + totalTokensUsed + " (input: " + inputTokens + ", output: " + outputTokens + ")");
 
         // Add Claude's response to message history
         JsonObject assistantMsg = new JsonObject();
@@ -109,40 +110,37 @@ public class AnthropicClient {
         assistantMsg.add("content", contentArray);
         messages.add(assistantMsg);
 
-        if (stopReason.equals("end_turn")) {
-            // Final text response — find and return the text block
-            for (var element : contentArray) {
-                JsonObject block = element.getAsJsonObject();
-                if (block.get("type").getAsString().equals("text")) {
-                    sender.sendMessage(block.get("text").getAsString());
-                    // Log total tokens used
-                    sender.sendMessage("§7[Tokens used: " + totalTokensUsed + "]");
-                    return;
-                }
-            }
-        }
-
-        if (stopReason.equals("tool_use")) {
+        if (stopReason.equals("tool_use") || stopReason.equals("end_turn")) {
             // Handle all tool calls and collect results
             JsonArray toolResults = new com.google.gson.JsonArray();
 
             for (var element : contentArray) {
                 JsonObject block = element.getAsJsonObject();
-                if (!block.get("type").getAsString().equals("tool_use")) continue;
+                String type = block.get("type").getAsString();
 
-                String toolName = block.get("name").getAsString();
-                String toolUseId = block.get("id").getAsString();
-                JsonObject input = block.getAsJsonObject("input");
-                input.addProperty("sender", sender.getName());
+                if (type.equals("text")) {
+                    sender.sendMessage(block.get("text").getAsString());
+                } else if (type.equals("tool_use")) {
+                    String toolName = block.get("name").getAsString();
+                    String toolUseId = block.get("id").getAsString();
+                    JsonObject input = block.getAsJsonObject("input");
+                    input.addProperty("sender", sender.getName());
 
-                // Call the actual tool on the Bukkit bridge
-                JsonElement toolResult = callTool(toolName, input);
+                    // Call the actual tool on the Bukkit bridge
+                    JsonElement toolResult = callTool(toolName, input);
 
-                JsonObject resultBlock = new JsonObject();
-                resultBlock.addProperty("type", "tool_result");
-                resultBlock.addProperty("tool_use_id", toolUseId);
-                resultBlock.addProperty("content", MinecraftTools.GSON.toJson(toolResult));
-                toolResults.add(resultBlock);
+                    JsonObject resultBlock = new JsonObject();
+                    resultBlock.addProperty("type", "tool_result");
+                    resultBlock.addProperty("tool_use_id", toolUseId);
+                    resultBlock.addProperty("content", MinecraftTools.GSON.toJson(toolResult));
+                    toolResults.add(resultBlock);
+                }
+            }
+
+            if (stopReason.equals("end_turn")) {
+                // Log total tokens used and exit out
+                sender.sendMessage("§7[Tokens used: " + totalTokensUsed + "]");
+                return;
             }
 
             // Add tool results as a user message and loop again
