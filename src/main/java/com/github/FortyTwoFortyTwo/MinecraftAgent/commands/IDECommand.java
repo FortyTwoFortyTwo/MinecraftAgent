@@ -44,11 +44,8 @@ public class IDECommand extends BukkitCommand {
 
             // Start Claude Code
             try {
-                claude.start();
+                claude.start(message);
                 Thread.sleep(5_000); // Wait for Claude to initialize
-
-                // Send a coding request — changes will appear in JetBrains diff viewer
-                claude.prompt(message);
 
                 // Keep running for 300 seconds then stop
                 Thread.sleep(300_000);

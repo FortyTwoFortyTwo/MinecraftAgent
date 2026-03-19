@@ -28,7 +28,7 @@ public class MinecraftAgent extends JavaPlugin {
         CommandMap commandMap = Bukkit.getServer().getCommandMap();
 
         commandMap.register("agent", new AgentCommand(anthropic));
-        commandMap.register("ide", new IDECommand(getConfig()));
+        commandMap.register("agent", new IDECommand(getConfig()));
 
         try {
             bridgeServer.start();
