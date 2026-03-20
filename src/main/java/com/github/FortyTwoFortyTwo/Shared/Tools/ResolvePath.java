@@ -30,7 +30,7 @@ public class ResolvePath implements com.github.FortyTwoFortyTwo.Shared.Minecraft
             searchRecursively(Path.of(dir), name, matches);
 
         if (matches.isEmpty())
-            return Map.of("success", false, "output", "ERROR: No file matching '" + name + "' found in any working directory. Call list_working_directories to see what's available.");
+            return Map.of("success", false, "error", "No file matching '" + name + "' found in any working directory. Call ListWorkingDirectories to see what's available.");
 
         return Map.of("success", true, "output", String.join("\n", matches));
     }

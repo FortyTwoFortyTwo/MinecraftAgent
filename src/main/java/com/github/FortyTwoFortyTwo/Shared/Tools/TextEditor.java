@@ -29,7 +29,10 @@ public class TextEditor implements com.github.FortyTwoFortyTwo.Shared.MinecraftT
             default            -> "ERROR: Unknown command: " + command;
         };
 
-        return Map.of("success", !result.startsWith("ERROR"), "output", result);
+        if (result.startsWith("ERROR: "))
+            return Map.of("success", false, "error", result.replace("ERROR: ", ""));
+        else
+            return Map.of("success", true, "output", result);
     }
 
     // View a file or directory listing
