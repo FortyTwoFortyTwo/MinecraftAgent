@@ -1,5 +1,6 @@
 package Tools;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
 import java.io.Serializable;
@@ -36,16 +37,16 @@ public class TextEditor implements com.github.FortyTwoFortyTwo.Shared.MinecraftT
         String path = input.get("path").getAsString();
         try {
             java.io.File file = new java.io.File(path);
-            if (file.isDirectory()) {
+            if (file.isDirectory())
                 return String.join("\n", file.list());
-            }
+
             // Optional: respect view_range if provided
-            List<Integer> range = (List<Integer>) input.get("view_range");
+            JsonArray range = input.getAsJsonArray("view_range");
             String content = java.nio.file.Files.readString(file.toPath());
             if (range != null) {
                 String[] lines = content.split("\n");
-                int start = range.get(0) - 1; // 1-indexed
-                int end   = Math.min(range.get(1), lines.length);
+                int start = range.get(0).getAsInt() - 1; // 1-indexed
+                int end   = Math.min(range.get(1).getAsInt(), lines.length);
                 return String.join("\n", Arrays.copyOfRange(lines, start, end));
             }
             return content;

@@ -2,8 +2,11 @@ package Tools;
 
 import com.google.gson.JsonObject;
 import io.modelcontextprotocol.spec.McpSchema;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 
+import java.awt.*;
 import java.io.Serializable;
 import java.util.Map;
 
@@ -23,7 +26,7 @@ public class BroadcastMessage implements com.github.FortyTwoFortyTwo.Shared.Mine
         if (message.isEmpty())
             return Map.of("error", "Missing 'message' field");
 
-        Bukkit.broadcastMessage("§6[AI] §f" + message);
+        Bukkit.broadcast(Component.text("[AI] ", NamedTextColor.YELLOW).append(Component.text(message)));
 
         return Map.of("success", true, "message", message);
     }

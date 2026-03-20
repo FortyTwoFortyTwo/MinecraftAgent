@@ -59,6 +59,7 @@ public class Main {
     private static CallToolResult toToolResult(JsonObject json) {
         boolean isError = json.has("error");
         String text = json.toString();
-        return new CallToolResult(List.of(new TextContent(text)), isError);
+
+        return CallToolResult.builder().addTextContent(text).isError(isError).build();
     }
 }
