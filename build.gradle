@@ -141,6 +141,8 @@ dependencies {
     // ── McpBridge (standalone MCP JAR) ──────────────────────────────────────
     mcpBridgeImplementation("io.papermc.paper:paper-api:" + project.PAPER_VERSION)
     mcpBridgeImplementation("io.modelcontextprotocol.sdk:mcp:0.18.1")
+    mcpBridgeImplementation("org.apache.logging.log4j:log4j-core:2.24.3")
+    mcpBridgeImplementation("org.apache.logging.log4j:log4j-api:2.24.3")
     mcpBridgeImplementation("com.google.code.gson:gson:2.13.2")
 
     // ── Shared ──────────────────────────────────────────────────────────────

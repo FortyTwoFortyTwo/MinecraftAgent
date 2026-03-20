@@ -61,7 +61,7 @@ public class BridgeHttpServer {
                     return null;
                 }
 
-                Map<String, Serializable> result = tool.execute(readBody(exchange));
+                Map<String, Serializable> result = tool.execute(readBody(exchange).getAsJsonObject("arguments"));
                 if (result.containsKey("error"))
                     MinecraftTools.sendJson(exchange, 400, result);
                 else
