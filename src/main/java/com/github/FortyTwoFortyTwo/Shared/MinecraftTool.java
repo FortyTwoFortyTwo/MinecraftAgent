@@ -3,10 +3,14 @@ package com.github.FortyTwoFortyTwo.Shared;
 import com.google.gson.JsonObject;
 import com.sun.net.httpserver.HttpExchange;
 import io.modelcontextprotocol.spec.McpSchema;
+import org.bukkit.Bukkit;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 public interface MinecraftTool {
 
@@ -52,5 +56,35 @@ public interface MinecraftTool {
     default boolean isAuthorized(HttpExchange exchange, String secret) {
         String header = exchange.getRequestHeaders().getFirst("X-MCP-Secret");
         return secret.equals(header);
+    }
+
+    default void runTask(Runnable task) {
+        runTask(() -> {
+            task.run();
+            return null; // Callable<Void> must return null
+        });
+    }
+
+    default <T> T runTask(Callable<T> task) {
+        CompletableFuture<T> future = new CompletableFuture<>();
+
+        // Schedule a sync task
+        Bukkit.getScheduler().runTask(com.github.FortyTwoFortyTwo.Shared.MinecraftTools.plugin, () -> {
+
+            try {
+                // Call the task. then signal that the sync is done
+                future.complete(task.call());
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+
+        // Block the async thread until the sync task completes
+        try {
+            return future.get(); // waits here until future.complete() is called
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 }

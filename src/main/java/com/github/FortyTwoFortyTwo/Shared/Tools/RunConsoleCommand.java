@@ -27,11 +27,13 @@ public class RunConsoleCommand implements com.github.FortyTwoFortyTwo.Shared.Min
         // Strip leading slash if present
         final String cmd = command.startsWith("/") ? command.substring(1) : command;
 
-        // Capture logs for AI to analyze
-        CaptureLogsAppender capture = new CaptureLogsAppender();
-        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
-        capture.end();
+        return runTask(() -> {
+            // Capture logs for AI to analyze
+            CaptureLogsAppender capture = new CaptureLogsAppender();
+            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
+            capture.end();
 
-        return Map.of("success", true, "output", (Serializable) capture.getOutput());
+            return Map.of("success", true, "output", (Serializable) capture.getOutput());
+        });
     }
 }

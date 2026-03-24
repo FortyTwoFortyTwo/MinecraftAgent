@@ -47,13 +47,13 @@ public class AnthropicClient {
         userMsg.addProperty("content", userMessage);
         messages.add(userMsg);
 
-        Bukkit.getScheduler().runTaskLater(MinecraftTools.plugin, () -> {
+        Bukkit.getScheduler().runTaskAsynchronously(MinecraftTools.plugin, () -> {
             try {
                 doRequest(sender, messages, system);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-        }, 1L);
+        });
     }
 
     private void doRequest(CommandSender sender, List<JsonObject> messages, String system) throws IOException {
@@ -159,13 +159,7 @@ public class AnthropicClient {
             messages.add(toolResultMsg);
         }
 
-        Bukkit.getScheduler().runTaskLater(MinecraftTools.plugin, () -> {
-            try {
-                doRequest(sender, messages, system);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }, 1L);
+        doRequest(sender, messages, system);
     }
 
     /** Calls the appropriate Bukkit bridge endpoint for a given tool */

@@ -21,7 +21,7 @@ public class GetOnlinePlayers implements com.github.FortyTwoFortyTwo.Shared.Mine
                         .collect(Collectors.joining(", "));
 
         return Map.of(
-                "players", players == null ? "" : players,
+                "players", players,
                 "count", Bukkit.getOnlinePlayers().size()
         );
     }

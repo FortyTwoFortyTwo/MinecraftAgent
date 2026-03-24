@@ -100,17 +100,19 @@ public class ExecuteCode implements com.github.FortyTwoFortyTwo.Shared.Minecraft
                 return Map.of("success", false, "error", e.getMessage());
             }
 
-            // Execute main method or instantiate
-            try {
-                CaptureLogsAppender capture = new CaptureLogsAppender();
-                clazz.getDeclaredConstructor().newInstance();
-                capture.end();
+            // Execute instance
+            return runTask(() -> {
+                try {
+                    CaptureLogsAppender capture = new CaptureLogsAppender();
+                    clazz.getDeclaredConstructor().newInstance();
+                    capture.end();
 
-                return Map.of("success", true, "output", (Serializable) capture.getOutput());
-            } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
-                     NoSuchMethodException e) {
-                return Map.of("success", false, "error", e.getMessage());
-            }
+                    return Map.of("success", true, "output", (Serializable) capture.getOutput());
+                } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
+                         NoSuchMethodException e) {
+                    return Map.of("success", false, "error", e.getMessage());
+                }
+            });
         } else {
             List<String> lines = new ArrayList<>();
             for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {

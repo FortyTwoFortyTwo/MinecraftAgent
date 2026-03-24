@@ -26,7 +26,9 @@ public class BroadcastMessage implements com.github.FortyTwoFortyTwo.Shared.Mine
         if (message.isEmpty())
             return Map.of("error", "Missing 'message' field");
 
-        Bukkit.broadcast(Component.text("[AI] ", NamedTextColor.YELLOW).append(Component.text(message)));
+        runTask(() -> {
+            Bukkit.broadcast(Component.text("[AI] ", NamedTextColor.YELLOW).append(Component.text(message)));
+        });
 
         return Map.of("success", true, "message", message);
     }
