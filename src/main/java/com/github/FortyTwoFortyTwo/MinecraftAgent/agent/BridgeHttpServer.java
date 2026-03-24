@@ -16,14 +16,12 @@ import java.util.concurrent.Executors;
 
 public class BridgeHttpServer {
 
-    private final JavaPlugin plugin;
     private final int port;
     private final String secret;
     private HttpServer server;
     private final Gson gson = new Gson();
 
-    public BridgeHttpServer(JavaPlugin plugin, int port, String secret) {
-        this.plugin = plugin;
+    public BridgeHttpServer(int port, String secret) {
         this.port = port;
         this.secret = secret;
     }

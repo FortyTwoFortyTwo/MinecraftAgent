@@ -5,6 +5,6 @@ bridge:
 anthropic:
   model: "claude-sonnet-4-6"
   max-tokens: 1024
-  secret: "your-secret-key-here"
+  secret: "sk-ant-api03-XXXXX"
 
 directories:

@@ -28,7 +28,7 @@ public class MinecraftAgent extends JavaPlugin {
         int port = getConfig().getInt("bridge.port", 25580);
         String secret = getConfig().getString("bridge.secret", "super-secret-password");
 
-        bridgeServer = new BridgeHttpServer(this, port, secret);
+        bridgeServer = new BridgeHttpServer(port, secret);
         AnthropicClient anthropic = new AnthropicClient(getConfig());
 
         // Catch any errors

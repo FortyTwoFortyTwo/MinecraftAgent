@@ -16,7 +16,7 @@ public class ClaudeCode {
         this.projectPath = projectPath;
     }
 
-    public void start(String prompt) throws IOException, InterruptedException {
+    public void start(String prompt) throws IOException {
         FileConfiguration config = MinecraftTools.plugin.getConfig();
 
         String[] cmd = new String[] {
