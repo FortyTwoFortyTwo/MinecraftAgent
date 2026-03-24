@@ -34,8 +34,15 @@ public interface MinecraftTool {
         return objectSchema(Map.of());
     }
 
-    default McpSchema.JsonSchema stringSchema() {
-        return new McpSchema.JsonSchema("string", null, null, null, null, null);
+    default Map<String, Object> stringSchema() {
+        return Map.of("type", "string");
+    }
+
+    default Map<String, Object> stringSchema(String description) {
+        return Map.of(
+                "type", "string",
+                "description", description
+        );
     }
 
     default McpSchema.JsonSchema objectSchema(Map<String, Object> properties) {

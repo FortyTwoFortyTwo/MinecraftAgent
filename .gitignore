@@ -27,4 +27,8 @@ hs_err_pid*
 
 # Gradle
 .gradle
-.idea
+
+# Idea
+/.idea/*
+!/.idea/dictionaries
+!/.idea/vcs.xml

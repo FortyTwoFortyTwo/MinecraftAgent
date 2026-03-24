@@ -7,10 +7,12 @@ import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 
+import java.awt.*;
 import java.io.IOException;
 import java.io.Serializable;
 import java.net.URI;
@@ -119,12 +121,15 @@ public class AnthropicClient {
                 System.out.println("Execute " + type + " (" + block + ")");
 
                 if (type.equals("text")) {
-                    sender.sendMessage(block.get("text").getAsString());
+                    if (sender == null)
+                        Bukkit.broadcast(Component.text(block.get("text").getAsString()));
+                    else
+                        sender.sendMessage(block.get("text").getAsString());
                 } else if (type.equals("tool_use")) {
                     String toolName = block.get("name").getAsString();
                     String toolUseId = block.get("id").getAsString();
                     JsonObject input = block.getAsJsonObject("input");
-                    input.addProperty("sender", sender.getName());
+                    input.addProperty("sender", sender != null ? sender.getName() : null);
 
                     // Call the actual tool on the Bukkit bridge
                     JsonElement toolResult = callTool(toolName, input);
@@ -139,7 +144,11 @@ public class AnthropicClient {
 
             if (stopReason.equals("end_turn")) {
                 // Log total tokens used and exit out
-                sender.sendMessage("§7[Tokens used: " + totalTokensUsed + "]");
+                if (sender == null)
+                    Bukkit.broadcast(Component.text("§7[Tokens used: " + totalTokensUsed + "]"));
+                else
+                    sender.sendMessage("§7[Tokens used: " + totalTokensUsed + "]");
+
                 return;
             }
 

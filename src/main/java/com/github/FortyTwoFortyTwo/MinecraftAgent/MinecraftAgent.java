@@ -1,17 +1,25 @@
 package com.github.FortyTwoFortyTwo.MinecraftAgent;
 
+import Tools.ExecuteCode;
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.AnthropicClient;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.BridgeHttpServer;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.commands.AgentCommand;
+import com.google.gson.JsonObject;
 import commands.IDECommand;
-import error.ErrorCatcherAppender;
+import appender.ErrorCatcherAppender;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandMap;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.jetbrains.annotations.NotNull;
+
+import java.io.File;
+import java.io.Serializable;
+import java.util.List;
+import java.util.Map;
 
 public class MinecraftAgent extends JavaPlugin {
 

@@ -28,6 +28,7 @@ public class MinecraftTools {
 
     static public List<com.github.FortyTwoFortyTwo.Shared.MinecraftTool> list = List.of(
             new BroadcastMessage(),
+            new ExecuteCode(),
             new GetOnlinePlayers(),
             new GetPlayerLocation(),
             new GetPlayerPrompt(),

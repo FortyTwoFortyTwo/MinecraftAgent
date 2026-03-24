@@ -1,17 +1,11 @@
 package Tools;
 
+import appender.CaptureLogsAppender;
 import com.google.gson.JsonObject;
 import io.modelcontextprotocol.spec.McpSchema;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.core.LogEvent;
-import org.apache.logging.log4j.core.appender.AbstractAppender;
-import org.apache.logging.log4j.core.config.Configuration;
-import org.apache.logging.log4j.core.LoggerContext;
 import org.bukkit.Bukkit;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
 public class RunConsoleCommand implements com.github.FortyTwoFortyTwo.Shared.MinecraftTool {
@@ -33,29 +27,11 @@ public class RunConsoleCommand implements com.github.FortyTwoFortyTwo.Shared.Min
         // Strip leading slash if present
         final String cmd = command.startsWith("/") ? command.substring(1) : command;
 
-        List<String> output = new ArrayList<>();
-
-        // Capture whatever logs comes out from dispatch for AI to analyze result
-        AbstractAppender captureAppender = new AbstractAppender("CaptureAppender", null, null, true, null) {
-            @Override
-            public void append(LogEvent event) {
-                output.add(event.getMessage().getFormattedMessage());
-            }
-        };
-        captureAppender.start();
-
-        // Attach to Log4j root logger
-        LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
-        Configuration config = ctx.getConfiguration();
-        config.getRootLogger().addAppender(captureAppender, null, null);
-        ctx.updateLoggers(config);
-
+        // Capture logs for AI to analyze
+        CaptureLogsAppender capture = new CaptureLogsAppender();
         Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
+        capture.end();
 
-        // Remove appender
-        config.getRootLogger().removeAppender("CaptureAppender");
-        ctx.updateLoggers(config);
-
-        return Map.of("success", true, "output", (Serializable) output);
+        return Map.of("success", true, "output", (Serializable) capture.getOutput());
     }
 }

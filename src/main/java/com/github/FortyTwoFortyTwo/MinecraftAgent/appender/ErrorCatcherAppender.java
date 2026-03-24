@@ -1,6 +1,5 @@
-package error;
+package appender;
 
-import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.AnthropicClient;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -49,11 +48,8 @@ public class ErrorCatcherAppender extends AbstractAppender {
 
         previous.add(result);
 
-        // TODO message everyone
-        Player player = Bukkit.getOnlinePlayers().iterator().next();
-        player.sendMessage(Component.text("Error detected! sending to Agent...", NamedTextColor.RED));
-
-        anthropic.sendMessage(player, message + "\n" + getStackTrace(thrown),
+        Bukkit.broadcast(Component.text("Error detected! sending to Agent...", NamedTextColor.RED));
+        anthropic.sendMessage(null, message + "\n" + getStackTrace(thrown),
                 "You are an AI agent, you will be given an error stack trace, do the best of your ability to edit files at working directory to fix given errors.");
     }
 
