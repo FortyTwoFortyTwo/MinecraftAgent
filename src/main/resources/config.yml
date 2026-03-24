@@ -7,5 +7,4 @@ anthropic:
   max-tokens: 1024
   secret: "your-secret-key-here"
 
-ide:
-  paths:
+directories:

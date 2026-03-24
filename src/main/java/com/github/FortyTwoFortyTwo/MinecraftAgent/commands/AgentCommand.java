@@ -5,6 +5,8 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.defaults.BukkitCommand;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.List;
+
 public class AgentCommand extends BukkitCommand {
 
     private final AnthropicClient anthropic;
@@ -12,6 +14,11 @@ public class AgentCommand extends BukkitCommand {
     public AgentCommand(AnthropicClient anthropic) {
         super("agent");
         this.anthropic = anthropic;
+    }
+
+    @Override
+    public @NotNull List<String> tabComplete(CommandSender sender, String alias, String[] args) {
+        return List.of();
     }
 
     @Override

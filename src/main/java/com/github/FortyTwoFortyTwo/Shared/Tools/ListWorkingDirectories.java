@@ -30,7 +30,7 @@ public class ListWorkingDirectories implements com.github.FortyTwoFortyTwo.Share
 
         StringBuilder sb = new StringBuilder();
 
-        for (String dir : MinecraftTools.plugin.getConfig().getStringList("ide.paths")) {
+        for (String dir : MinecraftTools.plugin.getConfig().getStringList("directories")) {
             Path path = Path.of(dir);
             Path target = !subPath.isEmpty() ? path.resolve(subPath) : path;
             Map<Path, List<FastIgnoreRule>> gitignoreMap = loadAllGitignores(path);

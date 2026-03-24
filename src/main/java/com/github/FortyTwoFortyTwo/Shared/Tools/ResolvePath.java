@@ -26,7 +26,7 @@ public class ResolvePath implements com.github.FortyTwoFortyTwo.Shared.Minecraft
         String name = input.get("name").getAsString();
         List<String> matches = new ArrayList<>();
 
-        for (String dir : MinecraftTools.plugin.getConfig().getStringList("ide.paths"))
+        for (String dir : MinecraftTools.plugin.getConfig().getStringList("directories"))
             searchRecursively(Path.of(dir), name, matches);
 
         if (matches.isEmpty())

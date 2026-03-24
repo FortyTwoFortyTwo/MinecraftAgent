@@ -11,14 +11,14 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Arrays;
 import java.util.List;
 
-public class IDECommand extends BukkitCommand {
+public class ClaudeCommand extends BukkitCommand {
 
     private List<String> paths;
 
-    public IDECommand(FileConfiguration config) {
-        super("ide");
+    public ClaudeCommand(FileConfiguration config) {
+        super("claude");
 
-        paths = config.getStringList("ide.paths");
+        paths = config.getStringList("directories");
     }
 
     @Override
