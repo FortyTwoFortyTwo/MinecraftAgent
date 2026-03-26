@@ -49,6 +49,9 @@ public class GetRegistryValues implements com.github.FortyTwoFortyTwo.Shared.Min
                 list.add(entry.getKey().toString());
         }
 
-        return Map.of("values", (Serializable) list);
+        if (list.size() > 200)
+            return Map.of("success", true, "output", list.size() + " results found, use filter regex to narrow down for a more detailed list.");
+
+        return Map.of("success", true, "values", (Serializable) list);
     }
 }
