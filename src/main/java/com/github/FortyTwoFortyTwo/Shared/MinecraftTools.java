@@ -46,14 +46,4 @@ public class MinecraftTools {
             os.write(bytes);
         }
     }
-
-    /** Runs a callable on Bukkit's main thread and blocks until it returns */
-    static public <T> T runOnMainThread(Callable<T> callable) {
-        try {
-            return Bukkit.getScheduler().callSyncMethod(plugin, callable).get();
-        } catch (Exception e) {
-            plugin.getLogger().warning("Error running task on main thread: " + e.getMessage());
-            return null;
-        }
-    }
 }

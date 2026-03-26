@@ -46,31 +46,29 @@ public class BridgeHttpServer {
     // Tool handler
     // -------------------------------------------------------------------------
 
-    private void handle(HttpExchange exchange) {
-        MinecraftTools.runOnMainThread(() -> {
-            String path = exchange.getRequestURI().getPath();
+    private void handle(HttpExchange exchange) throws IOException {
 
-            for (MinecraftTool tool : MinecraftTools.list) {
-                if (!tool.getPath().equals(path))
-                    continue;
+        String path = exchange.getRequestURI().getPath();
 
-                if (!tool.isAuthorized(exchange, secret)) {
-                    MinecraftTools.sendJson(exchange, 403, Map.of("error", "Unauthorized"));
-                    return null;
-                }
+        for (MinecraftTool tool : MinecraftTools.list) {
+            if (!tool.getPath().equals(path))
+                continue;
 
-                Map<String, Serializable> result = tool.execute(readBody(exchange).getAsJsonObject("arguments"));
-                if (result.containsKey("error"))
-                    MinecraftTools.sendJson(exchange, 400, result);
-                else
-                    MinecraftTools.sendJson(exchange, 200, result);
-
-                return null;
+            if (!tool.isAuthorized(exchange, secret)) {
+                MinecraftTools.sendJson(exchange, 403, Map.of("error", "Unauthorized"));
+                return;
             }
 
-            MinecraftTools.sendJson(exchange, 404, Map.of("error", "Unknown path " + path));
-            return null;
-        });
+            Map<String, Serializable> result = tool.execute(readBody(exchange).getAsJsonObject("arguments"));
+            if (result.containsKey("error"))
+                MinecraftTools.sendJson(exchange, 400, result);
+            else
+                MinecraftTools.sendJson(exchange, 200, result);
+
+            return;
+        }
+
+        MinecraftTools.sendJson(exchange, 404, Map.of("error", "Unknown path " + path));
     }
 
     // -------------------------------------------------------------------------
