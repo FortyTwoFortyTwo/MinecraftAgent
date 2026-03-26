@@ -28,7 +28,7 @@ public class ExecuteCode implements com.github.FortyTwoFortyTwo.Shared.Minecraft
     public McpSchema.JsonSchema getInputSchema() {
         return objectSchema(Map.of(
                 "className", stringSchema("Name of the class to call constructor without any arguments in generated code"),
-                "code", stringSchema("Full code to compile and execute it, can only have one public class.")
+                "code", stringSchema("Full code to compile and execute it, can only have one public class, of which it's constructor class will get executed.")
         ));
     }
 

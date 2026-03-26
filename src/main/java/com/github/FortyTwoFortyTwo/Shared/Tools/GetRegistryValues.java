@@ -5,6 +5,7 @@ import io.modelcontextprotocol.spec.McpSchema;
 import org.bukkit.Keyed;
 import org.bukkit.Material;
 import org.bukkit.Registry;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Item;
 
 import java.io.Serializable;
@@ -17,11 +18,13 @@ import java.util.regex.Pattern;
 public class GetRegistryValues implements com.github.FortyTwoFortyTwo.Shared.MinecraftTool {
 
     public String getDescription() {
-        return "Gets a list of all values from a Registry key name, with an optional filter by regex.";
+        return "Gets a list of all values from a Registry key name.";
     }
 
     public McpSchema.JsonSchema getInputSchema() {
-        return objectSchema(Map.of("registry", stringSchema(), "filter", stringSchema()));
+        return objectSchema(Map.of(
+                "registry", stringSchema("Key name of the registry, e.g. MATERIAL, ENTITY_TYPE"),
+                "filter", stringSchema("Optional filter by regex, do not attempt to get massive list of it")));
     }
 
     public Map<String, Serializable> execute(JsonObject input) {
