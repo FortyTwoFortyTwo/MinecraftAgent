@@ -8,6 +8,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -157,6 +158,16 @@ public class AnthropicClient {
             toolResultMsg.addProperty("role", "user");
             toolResultMsg.add("content", toolResults);
             messages.add(toolResultMsg);
+        } else if (stopReason.equals("max_tokens")) {
+
+            if (sender == null)
+                Bukkit.broadcast(Component.text("Max tokens reached", NamedTextColor.RED));
+            else
+                sender.sendMessage(Component.text("Max tokens reached", NamedTextColor.RED));
+
+            return;
+        } else {
+            System.err.println("Unknown stop_reason " + stopReason);
         }
 
         doRequest(sender, messages, system);
