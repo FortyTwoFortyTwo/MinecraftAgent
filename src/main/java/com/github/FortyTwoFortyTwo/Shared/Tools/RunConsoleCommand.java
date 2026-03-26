@@ -4,6 +4,7 @@ import appender.CaptureLogsAppender;
 import com.google.gson.JsonObject;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.bukkit.Bukkit;
+import org.bukkit.command.CommandException;
 
 import java.io.Serializable;
 import java.util.Map;
@@ -30,7 +31,13 @@ public class RunConsoleCommand implements com.github.FortyTwoFortyTwo.Shared.Min
         return runTask(() -> {
             // Capture logs for AI to analyze
             CaptureLogsAppender capture = new CaptureLogsAppender();
-            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
+
+            try {
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
+            } catch (CommandException e) {
+                e.printStackTrace();
+            }
+
             capture.end();
 
             return Map.of("success", true, "output", (Serializable) capture.getOutput());
