@@ -4,10 +4,12 @@ import agent.ClaudeCode;
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.command.defaults.BukkitCommand;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.jetbrains.annotations.NotNull;
 
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 
@@ -31,14 +33,27 @@ public class ClaudeCommand extends BukkitCommand {
 
     @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String commandLabel, @NotNull String @NotNull [] args) {
-        if (!sender.hasPermission("minecraft.command.op")) {
+        // Claude Code edits files on the host, so ops don't get this by default, it must be granted explicitly
+        if (!(sender instanceof ConsoleCommandSender) && !sender.hasPermission("minecraftagent.claude")) {
             sender.sendMessage("§cYou don't have permission to use this command.");
+            return true;
+        }
+
+        if (args.length < 2) {
+            sender.sendMessage("§cUsage: /claude <directory> <prompt>");
+            return true;
+        }
+
+        // Only allow directories listed in config
+        Path directory = Path.of(args[0]).toAbsolutePath().normalize();
+        if (paths.stream().noneMatch(path -> Path.of(path).toAbsolutePath().normalize().equals(directory))) {
+            sender.sendMessage("§cDirectory must be one of: " + String.join(", ", paths));
             return true;
         }
 
         Bukkit.getScheduler().runTaskAsynchronously(MinecraftTools.plugin, () -> {
 
-            ClaudeCode claude = new ClaudeCode(args[0]);
+            ClaudeCode claude = new ClaudeCode(directory.toString());
 
             String message = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
 

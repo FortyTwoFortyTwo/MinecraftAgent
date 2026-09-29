@@ -22,10 +22,10 @@ public class ClaudeCode {
         String[] cmd = new String[] {
                 "claude",
                 "--print",                  // headless mode: output result to stdout
-                "--allowedTools", "edit_file,read_file,list_files",  // allow file editing
+                "--allowedTools", "Read,Edit,Write,Glob,Grep",  // allow file editing, anything else is denied in headless mode
+                "--disallowedTools", "Bash,WebFetch,WebSearch", // deny even if the user's Claude settings allow them
                 "--output-format", "text",  // plain text output (or "json" for structured)
                 "--model", config.getString("anthropic.model"),
-                "--dangerously-skip-permissions",    // dangerous!
                 "-p", prompt
         };
 

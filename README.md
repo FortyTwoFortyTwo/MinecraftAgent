@@ -56,7 +56,8 @@ The `/claude` command works similarly to `/agent`, but instead of calling the An
 It uses `--output-format text` to get plain text output without a GUI.
 
 This mode does not have access to Minecraft-specific tools.
-It only uses `--allowedTools edit_file,read_file,list_files` for file editing purposes.
+It only allows `--allowedTools Read,Edit,Write,Glob,Grep` for file editing purposes, with Bash and web access disallowed.
+The directory must be one of the `directories` listed in config, and players need the `minecraftagent.claude` permission (not granted to ops by default).
 
 An earlier version of this had directly read through Claude Code GUI and automatically submitted input to retrieve results.
 While it did work, its very hacky and really shouldn't do that way anyway.

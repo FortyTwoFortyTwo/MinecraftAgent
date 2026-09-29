@@ -7,3 +7,8 @@ prefix: Agent
 authors: [ FortyTwoFortyTwo ]
 description: Does AI know how to play Minecraft?
 website: github.com/FortyTwoFortyTwo
+
+permissions:
+  minecraftagent.claude:
+    description: Allows running Claude Code on the host with /claude
+    default: false
