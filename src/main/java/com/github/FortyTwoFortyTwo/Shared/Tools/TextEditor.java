@@ -1,9 +1,13 @@
 package Tools;
 
+import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
+import java.io.IOException;
 import java.io.Serializable;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +43,7 @@ public class TextEditor implements com.github.FortyTwoFortyTwo.Shared.MinecraftT
     private String handleView(JsonObject input) {
         String path = input.get("path").getAsString();
         try {
-            java.io.File file = new java.io.File(path);
+            java.io.File file = resolveAllowed(path).toFile();
             if (file.isDirectory())
                 return String.join("\n", file.list());
 
@@ -64,7 +68,7 @@ public class TextEditor implements com.github.FortyTwoFortyTwo.Shared.MinecraftT
         String oldStr = input.get("old_str").getAsString();
         String newStr = input.get("new_str").getAsString();
         try {
-            java.nio.file.Path p = java.nio.file.Path.of(path);
+            java.nio.file.Path p = resolveAllowed(path);
             String content = java.nio.file.Files.readString(p);
             if (!content.contains(oldStr)) {
                 return "ERROR: old_str not found in file. No changes made.";
@@ -86,7 +90,7 @@ public class TextEditor implements com.github.FortyTwoFortyTwo.Shared.MinecraftT
         int insertLine = input.get("insert_line").getAsInt();
         String newStr = input.get("new_str").getAsString();
         try {
-            java.nio.file.Path p = java.nio.file.Path.of(path);
+            java.nio.file.Path p = resolveAllowed(path);
             List<String> lines = new java.util.ArrayList<>(
                     java.nio.file.Files.readAllLines(p)
             );
@@ -104,7 +108,7 @@ public class TextEditor implements com.github.FortyTwoFortyTwo.Shared.MinecraftT
         String content = input.get("file_text").getAsString();
         try {
             java.nio.file.Files.writeString(
-                    java.nio.file.Path.of(path),
+                    resolveAllowed(path),
                     content,
                     java.nio.file.StandardOpenOption.CREATE,
                     java.nio.file.StandardOpenOption.TRUNCATE_EXISTING
@@ -113,5 +117,33 @@ public class TextEditor implements com.github.FortyTwoFortyTwo.Shared.MinecraftT
         } catch (Exception e) {
             return "ERROR: " + e.getMessage();
         }
+    }
+
+    // Only allow paths inside the configured working directories, and never this plugin's own data folder (holds API keys)
+    private Path resolveAllowed(String rawPath) throws IOException {
+        Path path = realPath(Path.of(rawPath).toAbsolutePath().normalize());
+
+        Path dataFolder = realPath(MinecraftTools.plugin.getDataFolder().toPath().toAbsolutePath().normalize());
+        if (path.startsWith(dataFolder))
+            throw new SecurityException("Access to " + path + " is not allowed.");
+
+        for (String dir : MinecraftTools.plugin.getConfig().getStringList("directories")) {
+            if (path.startsWith(realPath(Path.of(dir).toAbsolutePath().normalize())))
+                return path;
+        }
+
+        throw new SecurityException(path + " is outside of the working directories. Call ListWorkingDirectories to see what's available.");
+    }
+
+    // Resolves symlinks through the deepest existing ancestor, so files that don't exist yet are still checked
+    private static Path realPath(Path path) throws IOException {
+        Path existing = path;
+        while (existing != null && !Files.exists(existing))
+            existing = existing.getParent();
+
+        if (existing == null)
+            return path;
+
+        return existing.toRealPath().resolve(existing.relativize(path)).normalize();
     }
 }
