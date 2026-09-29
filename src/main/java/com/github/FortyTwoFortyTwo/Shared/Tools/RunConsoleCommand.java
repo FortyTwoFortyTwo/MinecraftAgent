@@ -15,6 +15,10 @@ public class RunConsoleCommand implements com.github.FortyTwoFortyTwo.Shared.Min
         return "Runs a command on the Minecraft server console with operator-level privileges. Use with caution.";
     }
 
+    public boolean isBlockedForUntrusted() {
+        return true;
+    }
+
     public McpSchema.JsonSchema getInputSchema() {
         return objectSchema(Map.of("command", stringSchema()));
     }

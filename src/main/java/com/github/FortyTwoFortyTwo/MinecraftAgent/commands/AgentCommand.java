@@ -1,6 +1,7 @@
 package com.github.FortyTwoFortyTwo.MinecraftAgent.commands;
 
 import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.AnthropicClient;
+import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.defaults.BukkitCommand;
 import org.jetbrains.annotations.NotNull;
@@ -31,7 +32,8 @@ public class AgentCommand extends BukkitCommand {
         String message = String.join(" ", args);
         anthropic.sendMessage(sender, message,
                 "You are an AI agent embedded in a Minecraft server with full operator-level control.\n" +
-                "Use your available tools proactively to fulfil requests rather than just describing what you would do.");
+                "Use your available tools proactively to fulfil requests rather than just describing what you would do.",
+                MinecraftTools.list);
         return true;
     }
 }

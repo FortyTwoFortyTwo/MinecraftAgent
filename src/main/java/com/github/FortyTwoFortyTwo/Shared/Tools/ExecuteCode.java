@@ -25,6 +25,10 @@ public class ExecuteCode implements com.github.FortyTwoFortyTwo.Shared.Minecraft
         return "Executes a Java Code in Bukkit Minecraft Server, don't use working directories to assist yourself.";
     }
 
+    public boolean isBlockedForUntrusted() {
+        return true;
+    }
+
     public McpSchema.JsonSchema getInputSchema() {
         return objectSchema(Map.of(
                 "className", stringSchema("Name of the class to call constructor without any arguments in generated code"),

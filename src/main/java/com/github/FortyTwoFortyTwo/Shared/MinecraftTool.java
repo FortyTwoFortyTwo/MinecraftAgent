@@ -32,6 +32,11 @@ public interface MinecraftTool {
         return getClass().getSimpleName();
     }
 
+    /** Whether this tool is blocked for prompts built from untrusted input, e.g. server error messages */
+    default boolean isBlockedForUntrusted() {
+        return false;
+    }
+
     default String getPath() {
         return "/tools/" + getName().toLowerCase();
     }

@@ -46,7 +46,7 @@ public class MinecraftAgent extends JavaPlugin {
         AnthropicClient anthropic = new AnthropicClient(getConfig());
 
         // Catch any errors
-        errorAppender = new ErrorCatcherAppender(anthropic);
+        errorAppender = new ErrorCatcherAppender(anthropic, getConfig());
         errorAppender.start();
 
         // Attach to the root logger so ALL plugins are covered

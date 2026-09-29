@@ -13,7 +13,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 
-import java.awt.*;
 import java.io.IOException;
 import java.io.Serializable;
 import java.net.URI;
@@ -29,18 +28,21 @@ public class AnthropicClient {
 
     private final String model;
     private final int maxTokens;
+    private final int maxTurns;
+    private final int maxTotalTokens;
     private final String apiKey;
     private final HttpClient http = HttpClient.newHttpClient();
-    private int totalTokensUsed = 0;
 
     public AnthropicClient(FileConfiguration config) {
         this.model = config.getString("anthropic.model");
         this.maxTokens = config.getInt("anthropic.max-tokens");
+        this.maxTurns = config.getInt("anthropic.max-turns", 20);
+        this.maxTotalTokens = config.getInt("anthropic.max-total-tokens", 100000);
         this.apiKey = config.getString("anthropic.secret");
     }
 
-    public void sendMessage(CommandSender sender, String userMessage, String system) {
-        totalTokensUsed = 0;    // TODO multiple messages at once
+    /** Runs a prompt, only offering and allowing the given tools */
+    public void sendMessage(CommandSender sender, String userMessage, String system, List<MinecraftTool> tools) {
         List<JsonObject> messages = new ArrayList<>();
 
         JsonObject userMsg = new JsonObject();
@@ -50,18 +52,104 @@ public class AnthropicClient {
 
         Bukkit.getScheduler().runTaskAsynchronously(MinecraftTools.plugin, () -> {
             try {
-                doRequest(sender, messages, system);
+                run(sender, messages, system, tools);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         });
     }
 
-    private void doRequest(CommandSender sender, List<JsonObject> messages, String system) throws IOException {
+    private void run(CommandSender sender, List<JsonObject> messages, String system, List<MinecraftTool> tools) throws IOException {
+        int totalTokensUsed = 0;
+
+        for (int turn = 0; turn < maxTurns; turn++) {
+            if (totalTokensUsed >= maxTotalTokens) {
+                sender.sendMessage(Component.text("Token budget reached (" + totalTokensUsed + " tokens)", NamedTextColor.RED));
+                return;
+            }
+
+            JsonObject response = doRequest(messages, system, tools);
+
+            if (response.get("type").getAsString().equals("error")) {
+                sender.sendMessage(response.get("error").getAsJsonObject().get("message").getAsString());
+                return;
+            }
+
+            // Accumulate tokens used in this API call
+            JsonObject usage = response.getAsJsonObject("usage");
+
+            int inputTokens = usage.has("input_tokens") ? usage.get("input_tokens").getAsInt() : 0;
+            int outputTokens = usage.has("output_tokens") ? usage.get("output_tokens").getAsInt() : 0;
+            int tokensUsed = inputTokens + outputTokens;
+            totalTokensUsed += tokensUsed;
+
+            String stopReason = response.get("stop_reason").getAsString();
+            JsonArray contentArray = response.getAsJsonArray("content");
+
+            System.out.println("Accumulated tokens: " + totalTokensUsed + " (input: " + inputTokens + ", output: " + outputTokens + ")");
+
+            // Add Claude's response to message history
+            JsonObject assistantMsg = new JsonObject();
+            assistantMsg.addProperty("role", "assistant");
+            assistantMsg.add("content", contentArray);
+            messages.add(assistantMsg);
+
+            if (stopReason.equals("tool_use") || stopReason.equals("end_turn")) {
+                // Handle all tool calls and collect results
+                JsonArray toolResults = new com.google.gson.JsonArray();
+
+                for (var element : contentArray) {
+                    JsonObject block = element.getAsJsonObject();
+                    String type = block.get("type").getAsString();
+
+                    System.out.println("Execute " + type + " (" + block + ")");
+
+                    if (type.equals("text")) {
+                        sender.sendMessage(block.get("text").getAsString());
+                    } else if (type.equals("tool_use")) {
+                        String toolName = block.get("name").getAsString();
+                        String toolUseId = block.get("id").getAsString();
+                        JsonObject input = block.getAsJsonObject("input");
+                        input.addProperty("sender", sender.getName());
+
+                        // Call the actual tool on the Bukkit bridge
+                        JsonElement toolResult = callTool(tools, toolName, input);
+
+                        JsonObject resultBlock = new JsonObject();
+                        resultBlock.addProperty("type", "tool_result");
+                        resultBlock.addProperty("tool_use_id", toolUseId);
+                        resultBlock.addProperty("content", MinecraftTools.GSON.toJson(toolResult));
+                        toolResults.add(resultBlock);
+                    }
+                }
+
+                if (stopReason.equals("end_turn")) {
+                    // Log total tokens used and exit out
+                    sender.sendMessage("§7[Tokens used: " + totalTokensUsed + "]");
+                    return;
+                }
+
+                // Add tool results as a user message and loop again
+                JsonObject toolResultMsg = new JsonObject();
+                toolResultMsg.addProperty("role", "user");
+                toolResultMsg.add("content", toolResults);
+                messages.add(toolResultMsg);
+            } else if (stopReason.equals("max_tokens")) {
+                sender.sendMessage(Component.text("Max tokens reached", NamedTextColor.RED));
+                return;
+            } else {
+                System.err.println("Unknown stop_reason " + stopReason);
+            }
+        }
+
+        sender.sendMessage(Component.text("Turn limit reached (" + maxTurns + " turns, " + totalTokensUsed + " tokens)", NamedTextColor.RED));
+    }
+
+    private JsonObject doRequest(List<JsonObject> messages, String system, List<MinecraftTool> tools) throws IOException {
         JsonObject body = new JsonObject();
         body.addProperty("model", model);
         body.addProperty("max_tokens", maxTokens);
-        body.add("tools", buildToolDefinitions());
+        body.add("tools", buildToolDefinitions(tools));
         body.add("messages", MinecraftTools.GSON.toJsonTree(messages));
         body.addProperty("system", system + """
     All of your text responses will be printed directly in Minecraft chat. Keep responses concise and use
@@ -78,104 +166,18 @@ public class AnthropicClient {
                 .POST(HttpRequest.BodyPublishers.ofString(MinecraftTools.GSON.toJson(body)))
                 .build();
 
-        JsonObject response;
         try {
             var httpResponse = http.send(request, HttpResponse.BodyHandlers.ofString());
-            response = MinecraftTools.GSON.fromJson(httpResponse.body(), JsonObject.class);
+            return MinecraftTools.GSON.fromJson(httpResponse.body(), JsonObject.class);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IOException("Interrupted", e);
         }
-
-        if (response.get("type").getAsString().equals("error")) {
-            sender.sendMessage(response.get("error").getAsJsonObject().get("message").getAsString());
-            return;
-        }
-
-        // Accumulate tokens used in this API call
-        JsonObject usage = response.getAsJsonObject("usage");
-
-        int inputTokens = usage.has("input_tokens") ? usage.get("input_tokens").getAsInt() : 0;
-        int outputTokens = usage.has("output_tokens") ? usage.get("output_tokens").getAsInt() : 0;
-        int tokensUsed = inputTokens + outputTokens;
-        totalTokensUsed += tokensUsed;
-
-        String stopReason = response.get("stop_reason").getAsString();
-        JsonArray contentArray = response.getAsJsonArray("content");
-
-        System.out.println("Accumulated tokens: " + totalTokensUsed + " (input: " + inputTokens + ", output: " + outputTokens + ")");
-
-        // Add Claude's response to message history
-        JsonObject assistantMsg = new JsonObject();
-        assistantMsg.addProperty("role", "assistant");
-        assistantMsg.add("content", contentArray);
-        messages.add(assistantMsg);
-
-        if (stopReason.equals("tool_use") || stopReason.equals("end_turn")) {
-            // Handle all tool calls and collect results
-            JsonArray toolResults = new com.google.gson.JsonArray();
-
-            for (var element : contentArray) {
-                JsonObject block = element.getAsJsonObject();
-                String type = block.get("type").getAsString();
-
-                System.out.println("Execute " + type + " (" + block + ")");
-
-                if (type.equals("text")) {
-                    if (sender == null)
-                        Bukkit.broadcast(Component.text(block.get("text").getAsString()));
-                    else
-                        sender.sendMessage(block.get("text").getAsString());
-                } else if (type.equals("tool_use")) {
-                    String toolName = block.get("name").getAsString();
-                    String toolUseId = block.get("id").getAsString();
-                    JsonObject input = block.getAsJsonObject("input");
-                    input.addProperty("sender", sender != null ? sender.getName() : null);
-
-                    // Call the actual tool on the Bukkit bridge
-                    JsonElement toolResult = callTool(toolName, input);
-
-                    JsonObject resultBlock = new JsonObject();
-                    resultBlock.addProperty("type", "tool_result");
-                    resultBlock.addProperty("tool_use_id", toolUseId);
-                    resultBlock.addProperty("content", MinecraftTools.GSON.toJson(toolResult));
-                    toolResults.add(resultBlock);
-                }
-            }
-
-            if (stopReason.equals("end_turn")) {
-                // Log total tokens used and exit out
-                if (sender == null)
-                    Bukkit.broadcast(Component.text("§7[Tokens used: " + totalTokensUsed + "]"));
-                else
-                    sender.sendMessage("§7[Tokens used: " + totalTokensUsed + "]");
-
-                return;
-            }
-
-            // Add tool results as a user message and loop again
-            JsonObject toolResultMsg = new JsonObject();
-            toolResultMsg.addProperty("role", "user");
-            toolResultMsg.add("content", toolResults);
-            messages.add(toolResultMsg);
-        } else if (stopReason.equals("max_tokens")) {
-
-            if (sender == null)
-                Bukkit.broadcast(Component.text("Max tokens reached", NamedTextColor.RED));
-            else
-                sender.sendMessage(Component.text("Max tokens reached", NamedTextColor.RED));
-
-            return;
-        } else {
-            System.err.println("Unknown stop_reason " + stopReason);
-        }
-
-        doRequest(sender, messages, system);
     }
 
-    /** Calls the appropriate Bukkit bridge endpoint for a given tool */
-    private JsonElement callTool(String toolName, JsonObject input) {
-        for (MinecraftTool tool : MinecraftTools.list) {
+    /** Calls the appropriate Bukkit bridge endpoint for a given tool, if it's one this run is allowed to use */
+    private JsonElement callTool(List<MinecraftTool> tools, String toolName, JsonObject input) {
+        for (MinecraftTool tool : tools) {
             if (!tool.getName().equals(toolName))
                 continue;
 
@@ -188,10 +190,10 @@ public class AnthropicClient {
         return element;
     }
 
-    private JsonArray buildToolDefinitions() throws JsonProcessingException {
+    private JsonArray buildToolDefinitions(List<MinecraftTool> tools) throws JsonProcessingException {
 
         JsonArray array = new JsonArray();
-        for (MinecraftTool tool : MinecraftTools.list) {
+        for (MinecraftTool tool : tools) {
             JsonObject object = new JsonObject();
             object.addProperty("name", tool.getName());
 

@@ -16,6 +16,10 @@ public class BroadcastMessage implements com.github.FortyTwoFortyTwo.Shared.Mine
         return "Broadcasts a message to all players currently online on the Minecraft server.";
     }
 
+    public boolean isBlockedForUntrusted() {
+        return true;
+    }
+
     public McpSchema.JsonSchema getInputSchema() {
         return objectSchema(Map.of("message", stringSchema()));
     }
