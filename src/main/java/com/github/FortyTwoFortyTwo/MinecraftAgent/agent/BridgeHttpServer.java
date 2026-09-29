@@ -48,6 +48,13 @@ public class BridgeHttpServer {
 
     private void handle(HttpExchange exchange) throws IOException {
 
+        // Reject requests addressed to any other host name, blocking DNS rebinding from browser pages
+        String host = exchange.getRequestHeaders().getFirst("Host");
+        if (host == null || !(host.equalsIgnoreCase("127.0.0.1:" + port) || host.equalsIgnoreCase("localhost:" + port))) {
+            MinecraftTools.sendJson(exchange, 403, Map.of("error", "Invalid Host header"));
+            return;
+        }
+
         String path = exchange.getRequestURI().getPath();
 
         for (MinecraftTool tool : MinecraftTools.list) {
