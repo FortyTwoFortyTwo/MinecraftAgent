@@ -15,9 +15,9 @@ plugins {
 }
 
 ext {
-    JAVA_VERSION = 21
-    MINECRAFT_VERSION = "1.21.11"
-    PAPER_VERSION = MINECRAFT_VERSION + "-R0.1-SNAPSHOT"
+    JAVA_VERSION = 25
+    MINECRAFT_VERSION = "26.3"
+    PAPER_VERSION = MINECRAFT_VERSION + ".build.+"
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -65,6 +65,7 @@ tasks.withType(JavaCompile).configureEach {
             '-Xlint:all',
             '-Xlint:-processing',
             '-Xlint:-serial',
+            '-Xlint:-this-escape',
             '-Xlint:unchecked',
             '-Xlint:cast',
             '-Xlint:deprecation',
