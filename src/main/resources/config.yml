@@ -1,6 +1,7 @@
 bridge:
   port: 25580
-  secret: "super-secret-password"
+  # Leave empty to generate a random secret on startup. McpBridge needs the same value in MC_BRIDGE_SECRET.
+  secret: ""
 
 anthropic:
   model: "claude-sonnet-4-6"

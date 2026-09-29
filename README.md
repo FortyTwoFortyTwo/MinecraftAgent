@@ -28,11 +28,16 @@ For example, to use it with Claude Desktop, add the following to `%APPDATA%\Clau
       "args": [
         "-jar",
         "<path to this repo>\\build\\libs\\McpBridge-1.0.0.jar"
-      ]
+      ],
+      "env": {
+        "MC_BRIDGE_SECRET": "<bridge.secret from plugins\\MinecraftAgent\\config.yml>"
+      }
     }
   }
 }
 ```
+
+The plugin generates a random `bridge.secret` on first start if none is set, and McpBridge refuses to start without `MC_BRIDGE_SECRET`.
 
 The JAR exposes the available Minecraft tools to the AI agent.
 When the agent calls a tool, McpBridge sends an HTTP request to **MinecraftAgent**'s bound port, which executes the action in the Minecraft server and returns the result.

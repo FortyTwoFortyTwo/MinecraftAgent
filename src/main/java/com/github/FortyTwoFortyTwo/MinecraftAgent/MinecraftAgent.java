@@ -13,6 +13,9 @@ import org.bukkit.Bukkit;
 import org.bukkit.command.CommandMap;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.security.SecureRandom;
+import java.util.Base64;
+
 public class MinecraftAgent extends JavaPlugin {
 
     private BridgeHttpServer bridgeServer;
@@ -26,7 +29,18 @@ public class MinecraftAgent extends JavaPlugin {
         saveDefaultConfig();
 
         int port = getConfig().getInt("bridge.port", 25580);
-        String secret = getConfig().getString("bridge.secret", "super-secret-password");
+        String secret = getConfig().getString("bridge.secret", "");
+
+        // Never run the bridge with an empty or publicly known secret
+        if (secret.isBlank() || secret.equals("super-secret-password")) {
+            byte[] bytes = new byte[32];
+            new SecureRandom().nextBytes(bytes);
+            secret = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+
+            getConfig().set("bridge.secret", secret);
+            saveConfig();
+            getLogger().warning("Generated a new random bridge.secret in config.yml, set MC_BRIDGE_SECRET to it for McpBridge.");
+        }
 
         bridgeServer = new BridgeHttpServer(port, secret);
         AnthropicClient anthropic = new AnthropicClient(getConfig());

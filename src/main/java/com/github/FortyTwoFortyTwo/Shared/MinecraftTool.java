@@ -6,6 +6,8 @@ import io.modelcontextprotocol.spec.McpSchema;
 import org.bukkit.Bukkit;
 
 import java.io.Serializable;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -55,7 +57,11 @@ public interface MinecraftTool {
 
     default boolean isAuthorized(HttpExchange exchange, String secret) {
         String header = exchange.getRequestHeaders().getFirst("X-MCP-Secret");
-        return secret.equals(header);
+        if (header == null)
+            return false;
+
+        // Constant-time comparison so the secret can't be guessed through response timing
+        return MessageDigest.isEqual(secret.getBytes(StandardCharsets.UTF_8), header.getBytes(StandardCharsets.UTF_8));
     }
 
     default void runTask(Runnable task) {
