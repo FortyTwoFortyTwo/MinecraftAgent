@@ -28,21 +28,6 @@ public class MinecraftAgent extends JavaPlugin {
 
         saveDefaultConfig();
 
-        int port = getConfig().getInt("bridge.port", 25580);
-        String secret = getConfig().getString("bridge.secret", "");
-
-        // Never run the bridge with an empty or publicly known secret
-        if (secret.isBlank() || secret.equals("super-secret-password")) {
-            byte[] bytes = new byte[32];
-            new SecureRandom().nextBytes(bytes);
-            secret = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-
-            getConfig().set("bridge.secret", secret);
-            saveConfig();
-            getLogger().warning("Generated a new random bridge.secret in config.yml, set MC_BRIDGE_SECRET to it for McpBridge.");
-        }
-
-        bridgeServer = new BridgeHttpServer(port, secret);
         AnthropicClient anthropic = new AnthropicClient(getConfig());
 
         // Catch any errors
@@ -59,6 +44,30 @@ public class MinecraftAgent extends JavaPlugin {
         CommandMap commandMap = Bukkit.getServer().getCommandMap();
         commandMap.register("agent", new AgentCommand(anthropic));
         commandMap.register("agent", new ClaudeCommand(getConfig()));
+
+        if (getConfig().getBoolean("bridge.enabled", true)) {
+            startBridge();
+        } else {
+            getLogger().info("MCP Bridge HTTP server is disabled in config.yml.");
+        }
+    }
+
+    private void startBridge() {
+        int port = getConfig().getInt("bridge.port", 25580);
+        String secret = getConfig().getString("bridge.secret", "");
+
+        // Never run the bridge with an empty or publicly known secret
+        if (secret.isBlank() || secret.equals("super-secret-password")) {
+            byte[] bytes = new byte[32];
+            new SecureRandom().nextBytes(bytes);
+            secret = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+
+            getConfig().set("bridge.secret", secret);
+            saveConfig();
+            getLogger().warning("Generated a new random bridge.secret in config.yml, set MC_BRIDGE_SECRET to it for McpBridge.");
+        }
+
+        bridgeServer = new BridgeHttpServer(port, secret);
 
         try {
             bridgeServer.start();

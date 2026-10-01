@@ -1,4 +1,5 @@
 bridge:
+  enabled: false
   port: 25580
   # Leave empty to generate a random secret on startup. McpBridge needs the same value in MC_BRIDGE_SECRET.
   secret: ""
