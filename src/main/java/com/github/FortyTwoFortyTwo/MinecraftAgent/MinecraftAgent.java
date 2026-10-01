@@ -45,7 +45,7 @@ public class MinecraftAgent extends JavaPlugin {
         commandMap.register("agent", new AgentCommand(anthropic));
         commandMap.register("agent", new ClaudeCommand(getConfig()));
 
-        if (getConfig().getBoolean("bridge.enabled", true)) {
+        if (getConfig().getBoolean("bridge.enabled")) {
             startBridge();
         } else {
             getLogger().info("MCP Bridge HTTP server is disabled in config.yml.");
@@ -53,8 +53,8 @@ public class MinecraftAgent extends JavaPlugin {
     }
 
     private void startBridge() {
-        int port = getConfig().getInt("bridge.port", 25580);
-        String secret = getConfig().getString("bridge.secret", "");
+        int port = getConfig().getInt("bridge.port");
+        String secret = getConfig().getString("bridge.secret");
 
         // Never run the bridge with an empty or publicly known secret
         if (secret.isBlank() || secret.equals("super-secret-password")) {

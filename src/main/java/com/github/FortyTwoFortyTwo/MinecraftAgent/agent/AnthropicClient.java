@@ -36,8 +36,8 @@ public class AnthropicClient {
     public AnthropicClient(FileConfiguration config) {
         this.model = config.getString("anthropic.model");
         this.maxTokens = config.getInt("anthropic.max-tokens");
-        this.maxTurns = config.getInt("anthropic.max-turns", 20);
-        this.maxTotalTokens = config.getInt("anthropic.max-total-tokens", 100000);
+        this.maxTurns = config.getInt("anthropic.max-turns");
+        this.maxTotalTokens = config.getInt("anthropic.max-total-tokens");
         this.apiKey = config.getString("anthropic.secret");
     }
 

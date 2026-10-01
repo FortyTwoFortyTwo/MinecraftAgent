@@ -32,7 +32,7 @@ public class ErrorCatcherAppender extends AbstractAppender {
         this.anthropic = anthropic;
         // Error messages can contain player-controlled text, so only offer tools that are safe for untrusted input
         this.tools = MinecraftTools.list.stream().filter(tool -> !tool.isBlockedForUntrusted()).toList();
-        this.maxRunsPerHour = config.getInt("error-catcher.max-runs-per-hour", 5);
+        this.maxRunsPerHour = config.getInt("error-catcher.max-runs-per-hour");
     }
 
     @Override
