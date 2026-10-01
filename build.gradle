@@ -172,6 +172,9 @@ tasks.register("shadowMinecraftAgent", com.github.jengelman.gradle.plugins.shado
     from sourceSets.shared.output
     configurations = [project.configurations.minecraftAgentRuntimeClasspath]
 
+    // Signed dependencies (e.g. JGit) ship signature files that become invalid once shaded
+    exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA", "META-INF/*.EC")
+
     def base = "com.github.FortyTwoFortyTwo.libs."
     relocate("com.zaxxer.hikari",  "${base}hikari")
     relocate("org.postgresql",     "${base}postgresql")
@@ -194,6 +197,9 @@ tasks.register("shadowMcpBridge", com.github.jengelman.gradle.plugins.shadow.tas
     from sourceSets.mcpBridge.output
     from sourceSets.shared.output
     configurations = [project.configurations.mcpBridgeRuntimeClasspath]
+
+    // Signed dependencies (e.g. JGit) ship signature files that become invalid once shaded
+    exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA", "META-INF/*.EC")
 
     manifest {
         attributes "Main-Class": "com.github.FortyTwoFortyTwo.McpBridge.Main"
