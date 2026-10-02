@@ -99,15 +99,18 @@ sourceSets {
         }
     }
 
+    // Each source set uses the same src/main/java root so packages match their directories, filtered down to its own folder
     shared {
         java {
-            srcDirs = ["src/main/java/com/github/FortyTwoFortyTwo/Shared"]
+            srcDirs = ["src/main/java"]
+            include "com/github/FortyTwoFortyTwo/Shared/**"
         }
     }
 
     minecraftAgent {
         java {
-            srcDirs = ["src/main/java/com/github/FortyTwoFortyTwo/MinecraftAgent"]
+            srcDirs = ["src/main/java"]
+            include "com/github/FortyTwoFortyTwo/MinecraftAgent/**"
         }
         resources {
             srcDirs = ["src/main/resources"]
@@ -119,7 +122,8 @@ sourceSets {
 
     mcpBridge {
         java {
-            srcDirs = ["src/main/java/com/github/FortyTwoFortyTwo/McpBridge"]
+            srcDirs = ["src/main/java"]
+            include "com/github/FortyTwoFortyTwo/McpBridge/**"
         }
         // Makes Shared classes visible to McpBridge at compile time
         compileClasspath += sourceSets.shared.output

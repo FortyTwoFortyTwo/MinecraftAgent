@@ -1,4 +1,4 @@
-package Tools;
+package com.github.FortyTwoFortyTwo.Shared.Tools;
 
 import com.google.gson.JsonObject;
 import com.sun.net.httpserver.HttpExchange;

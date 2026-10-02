@@ -12,7 +12,7 @@ anthropic:
   max-total-tokens: 100000
   secret: "sk-ant-api03-XXXXX"
 
-# Used by /claude and /claudeagent, which run the Claude Code CLI and can be billed to a Claude Pro/Max subscription instead of the API
+# Used by /agent subscription and /agent code, which run the Claude Code CLI and can be billed to a Claude Pro/Max subscription instead of the API
 claude-code:
   # Path to the claude executable. Leave empty to search PATH (on Windows, resolves npm's claude.cmd to its claude.exe).
   executable: ""

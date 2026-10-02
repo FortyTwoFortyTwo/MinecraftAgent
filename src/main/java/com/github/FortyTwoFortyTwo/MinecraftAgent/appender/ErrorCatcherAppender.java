@@ -1,4 +1,4 @@
-package appender;
+package com.github.FortyTwoFortyTwo.MinecraftAgent.appender;
 
 import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.AnthropicClient;
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTool;

@@ -1,4 +1,4 @@
-package Tools;
+package com.github.FortyTwoFortyTwo.Shared.Tools;
 
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import com.google.gson.JsonObject;

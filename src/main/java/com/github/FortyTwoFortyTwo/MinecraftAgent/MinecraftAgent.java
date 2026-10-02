@@ -4,9 +4,11 @@ import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.AnthropicClient;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.BridgeHttpServer;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.commands.AgentCommand;
-import commands.ClaudeAgentCommand;
-import commands.ClaudeCommand;
-import appender.ErrorCatcherAppender;
+import com.github.FortyTwoFortyTwo.MinecraftAgent.types.AgentType;
+import com.github.FortyTwoFortyTwo.MinecraftAgent.types.ApiAgent;
+import com.github.FortyTwoFortyTwo.MinecraftAgent.types.CodeAgent;
+import com.github.FortyTwoFortyTwo.MinecraftAgent.types.SubscriptionAgent;
+import com.github.FortyTwoFortyTwo.MinecraftAgent.appender.ErrorCatcherAppender;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
@@ -16,8 +18,13 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 public class MinecraftAgent extends JavaPlugin {
+
+    public static final Map<String, AgentType> types = new LinkedHashMap<>();
 
     private BridgeHttpServer bridgeServer;
 
@@ -41,11 +48,13 @@ public class MinecraftAgent extends JavaPlugin {
         rootLogger.addAppender(errorAppender);
 
 
+        // Agent types available through /agent <type>
+        for (AgentType type : List.of(new ApiAgent(anthropic), new SubscriptionAgent(), new CodeAgent(getConfig())))
+            types.put(type.name(), type);
+
         // Register commands
         CommandMap commandMap = Bukkit.getServer().getCommandMap();
-        commandMap.register("agent", new AgentCommand(anthropic));
-        commandMap.register("agent", new ClaudeCommand(getConfig()));
-        commandMap.register("agent", new ClaudeAgentCommand());
+        commandMap.register("agent", new AgentCommand());
 
         if (getConfig().getBoolean("bridge.enabled")) {
             startBridge();

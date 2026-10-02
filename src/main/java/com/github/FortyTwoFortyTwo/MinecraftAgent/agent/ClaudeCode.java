@@ -1,7 +1,6 @@
-package agent;
+package com.github.FortyTwoFortyTwo.MinecraftAgent.agent;
 
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
-import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.MinecraftMcpServer;
 import com.google.gson.JsonObject;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -35,6 +34,15 @@ public class ClaudeCode {
         this.builtInTools = builtInTools;
         this.systemPrompt = systemPrompt;
         this.minecraftTools = minecraftTools;
+    }
+
+    /** Runs the prompt, blocking until it's stopped after 300 seconds, so call off the main thread */
+    public void run(String prompt) throws IOException, InterruptedException {
+        start(prompt);
+
+        // Keep running for 300 seconds then stop
+        Thread.sleep(300_000);
+        stop();
     }
 
     public void start(String prompt) throws IOException {

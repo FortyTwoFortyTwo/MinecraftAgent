@@ -1,6 +1,6 @@
 package com.github.FortyTwoFortyTwo.Shared;
 
-import Tools.*;
+import com.github.FortyTwoFortyTwo.Shared.Tools.*;
 import com.google.gson.Gson;
 import com.sun.net.httpserver.HttpExchange;
 import io.modelcontextprotocol.spec.McpSchema.*;

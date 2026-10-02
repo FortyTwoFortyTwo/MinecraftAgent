@@ -42,37 +42,37 @@ The plugin generates a random `bridge.secret` on first start if none is set, and
 The JAR exposes the available Minecraft tools to the AI agent.
 When the agent calls a tool, McpBridge sends an HTTP request to **MinecraftAgent**'s bound port, which executes the action in the Minecraft server and returns the result.
 
-### `/agent` via [Anthropic API](https://github.com/FortyTwoFortyTwo/MinecraftAgent/blob/main/src/main/java/com/github/FortyTwoFortyTwo/MinecraftAgent/agent/AnthropicClient.java)
+### `/agent api` via [Anthropic API](https://github.com/FortyTwoFortyTwo/MinecraftAgent/blob/main/src/main/java/com/github/FortyTwoFortyTwo/MinecraftAgent/agent/AnthropicClient.java)
 
-The `/agent` command lets you send prompts to the AI agent directly from within Minecraft.
+The `/agent api <prompt>` command lets you send prompts to the AI agent directly from within Minecraft.
 It communicates with the Anthropic API (`https://api.anthropic.com/v1/messages`), passing the available tools and receiving actions to execute in-game.
 
 All text responses from the agent are printed in chat.
 The final response is formatted in Minecraft style (colours, bold, strikethrough, etc.), while intermediate messages during processing are shown in plain white text due to limitations on Anthropic.
 
-### `/claude` via [Claude Code](https://github.com/FortyTwoFortyTwo/MinecraftAgent/blob/main/src/main/java/com/github/FortyTwoFortyTwo/MinecraftAgent/agent/ClaudeCode.java)
+### `/agent code` via [Claude Code](https://github.com/FortyTwoFortyTwo/MinecraftAgent/blob/main/src/main/java/com/github/FortyTwoFortyTwo/MinecraftAgent/agent/ClaudeCode.java)
 
-The `/claude` command works similarly to `/agent`, but instead of calling the Anthropic API over HTTP, it runs the `claude` CLI directly.
+The `/agent code <directory> <prompt>` command works similarly to `/agent api`, but instead of calling the Anthropic API over HTTP, it runs the `claude` CLI directly.
 It uses `--output-format text` to get plain text output without a GUI.
 
 This mode does not have access to Minecraft-specific tools.
 It only has `--tools Read,Edit,Write,Glob,Grep` for file editing purposes, so Bash, web access and every other built-in tool don't exist for it.
-The directory must be one of the `directories` listed in config, and players need the `minecraftagent.claude` permission (not granted to ops by default).
+The directory must be one of the `directories` listed in config.
 
 An earlier version of this had directly read through Claude Code GUI and automatically submitted input to retrieve results.
 While it did work, its very hacky and really shouldn't do that way anyway.
 
-### `/claudeagent` via Claude Code
+### `/agent subscription` via Claude Code
 
-The `/claudeagent <prompt>` command is the Claude Code equivalent of `/agent`.
+The `/agent subscription <prompt>` command is the Claude Code equivalent of `/agent api`.
 Each run starts its own [MCP server over HTTP](https://github.com/FortyTwoFortyTwo/MinecraftAgent/blob/main/src/main/java/com/github/FortyTwoFortyTwo/MinecraftAgent/agent/MinecraftMcpServer.java) on a free localhost port with a random secret, and stops it when the run ends.
 Claude Code connects to it directly (`--mcp-config` with `"type": "http"`) and runs the agent loop over the Minecraft tools, so neither McpBridge nor the `bridge` config is involved.
-It has none of Claude Code's built-in tools (`--tools ""`), only the same Minecraft tools `/agent` gets.
+It has none of Claude Code's built-in tools (`--tools ""`), only the same Minecraft tools `/agent api` gets.
 Tool calls are always made on behalf of the player who ran the command.
 
 ### Claude subscription
 
-`/claude` and `/claudeagent` go through Claude Code, so they can run on a Claude Pro/Max subscription instead of API credits.
+`/agent subscription` and `/agent code` go through Claude Code, so they can run on a Claude Pro/Max subscription instead of API credits.
 Run `claude setup-token` on the server host and put the token in `claude-code.oauth-token`, or leave it empty to use the host's `claude login` session.
 `ANTHROPIC_API_KEY` is never passed through, since it would take priority over the subscription.
 

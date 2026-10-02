@@ -1,6 +1,6 @@
-package Tools;
+package com.github.FortyTwoFortyTwo.Shared.Tools;
 
-import appender.CaptureLogsAppender;
+import com.github.FortyTwoFortyTwo.Shared.appender.CaptureLogsAppender;
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import com.google.gson.JsonObject;
 import io.modelcontextprotocol.spec.McpSchema;
