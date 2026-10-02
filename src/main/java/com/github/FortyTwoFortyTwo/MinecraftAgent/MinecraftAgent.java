@@ -4,6 +4,7 @@ import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.AnthropicClient;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.BridgeHttpServer;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.commands.AgentCommand;
+import commands.ClaudeAgentCommand;
 import commands.ClaudeCommand;
 import appender.ErrorCatcherAppender;
 import org.apache.logging.log4j.LogManager;
@@ -44,6 +45,7 @@ public class MinecraftAgent extends JavaPlugin {
         CommandMap commandMap = Bukkit.getServer().getCommandMap();
         commandMap.register("agent", new AgentCommand(anthropic));
         commandMap.register("agent", new ClaudeCommand(getConfig()));
+        commandMap.register("agent", new ClaudeAgentCommand());
 
         if (getConfig().getBoolean("bridge.enabled")) {
             startBridge();

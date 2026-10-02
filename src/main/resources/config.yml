@@ -12,6 +12,16 @@ anthropic:
   max-total-tokens: 100000
   secret: "sk-ant-api03-XXXXX"
 
+# Used by /claude and /claudeagent, which run the Claude Code CLI and can be billed to a Claude Pro/Max subscription instead of the API
+claude-code:
+  # Path to the claude executable. Leave empty to search PATH (on Windows, resolves npm's claude.cmd to its claude.exe).
+  executable: ""
+  # Token from running `claude setup-token`. Leave empty to use the host's own `claude login` session.
+  oauth-token: ""
+  # Leave empty to use the default model for the logged in plan
+  model: ""
+  max-turns: 20
+
 error-catcher:
   # Maximum number of automatic agent runs triggered by server errors per hour
   max-runs-per-hour: 5

@@ -34,7 +34,7 @@ public class ClaudeCommand extends BukkitCommand {
     @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String commandLabel, @NotNull String @NotNull [] args) {
         // Claude Code edits files on the host, so ops don't get this by default, it must be granted explicitly
-        if (!(sender instanceof ConsoleCommandSender) && !sender.hasPermission("minecraftagent.claude")) {
+        if (!sender.hasPermission("minecraft.command.op")) {
             sender.sendMessage("§cYou don't have permission to use this command.");
             return true;
         }
@@ -53,7 +53,7 @@ public class ClaudeCommand extends BukkitCommand {
 
         Bukkit.getScheduler().runTaskAsynchronously(MinecraftTools.plugin, () -> {
 
-            ClaudeCode claude = new ClaudeCode(directory.toString());
+            ClaudeCode claude = new ClaudeCode(directory.toString(), sender, "Read,Edit,Write,Glob,Grep", null, false);
 
             String message = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
 
