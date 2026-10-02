@@ -5,12 +5,12 @@ import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 
-/** Same as api, but runs through Claude Code so it's billed to a Claude subscription instead of the API */
-public class SubscriptionAgent implements AgentType {
+/** Same as api, but runs through Claude Code connected to a Minecraft tools MCP server, so it can be billed to a Claude subscription */
+public class McpAgent implements AgentType {
 
     @Override
     public String name() {
-        return "subscription";
+        return "mcp";
     }
 
     @Override

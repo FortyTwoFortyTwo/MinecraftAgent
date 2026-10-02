@@ -7,7 +7,7 @@ import com.github.FortyTwoFortyTwo.MinecraftAgent.commands.AgentCommand;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.types.AgentType;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.types.ApiAgent;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.types.CodeAgent;
-import com.github.FortyTwoFortyTwo.MinecraftAgent.types.SubscriptionAgent;
+import com.github.FortyTwoFortyTwo.MinecraftAgent.types.McpAgent;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.appender.ErrorCatcherAppender;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.Logger;
@@ -49,7 +49,7 @@ public class MinecraftAgent extends JavaPlugin {
 
 
         // Agent types available through /agent <type>
-        for (AgentType type : List.of(new ApiAgent(anthropic), new SubscriptionAgent(), new CodeAgent(getConfig())))
+        for (AgentType type : List.of(new ApiAgent(anthropic), new McpAgent(), new CodeAgent(getConfig())))
             types.put(type.name(), type);
 
         // Register commands

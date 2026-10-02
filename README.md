@@ -62,9 +62,9 @@ The directory must be one of the `directories` listed in config.
 An earlier version of this had directly read through Claude Code GUI and automatically submitted input to retrieve results.
 While it did work, its very hacky and really shouldn't do that way anyway.
 
-### `/agent subscription` via Claude Code
+### `/agent mcp` via Claude Code
 
-The `/agent subscription <prompt>` command is the Claude Code equivalent of `/agent api`.
+The `/agent mcp <prompt>` command is the Claude Code equivalent of `/agent api`.
 Each run starts its own [MCP server over HTTP](https://github.com/FortyTwoFortyTwo/MinecraftAgent/blob/main/src/main/java/com/github/FortyTwoFortyTwo/MinecraftAgent/agent/MinecraftMcpServer.java) on a free localhost port with a random secret, and stops it when the run ends.
 Claude Code connects to it directly (`--mcp-config` with `"type": "http"`) and runs the agent loop over the Minecraft tools, so neither McpBridge nor the `bridge` config is involved.
 It has none of Claude Code's built-in tools (`--tools ""`), only the same Minecraft tools `/agent api` gets.
@@ -72,7 +72,7 @@ Tool calls are always made on behalf of the player who ran the command.
 
 ### Claude subscription
 
-`/agent subscription` and `/agent code` go through Claude Code, so they can run on a Claude Pro/Max subscription instead of API credits.
+`/agent mcp` and `/agent code` go through Claude Code, so they can run on a Claude Pro/Max subscription instead of API credits.
 Run `claude setup-token` on the server host and put the token in `claude-code.oauth-token`, or leave it empty to use the host's `claude login` session.
 `ANTHROPIC_API_KEY` is never passed through, since it would take priority over the subscription.
 
