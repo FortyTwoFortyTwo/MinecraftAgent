@@ -66,7 +66,14 @@ public class BridgeHttpServer {
                 return;
             }
 
-            Map<String, Serializable> result = tool.execute(readBody(exchange).getAsJsonObject("arguments"));
+            // Same as MinecraftMcpServer, a failing tool is reported back rather than dropping the connection
+            Map<String, Serializable> result;
+            try {
+                result = tool.execute(readBody(exchange).getAsJsonObject("arguments"));
+            } catch (Exception e) {
+                result = Map.of("error", String.valueOf(e));
+            }
+
             if (result.containsKey("error"))
                 MinecraftTools.sendJson(exchange, 400, result);
             else

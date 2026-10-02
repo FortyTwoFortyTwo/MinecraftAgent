@@ -85,17 +85,20 @@ public interface MinecraftTool {
             try {
                 // Call the task. then signal that the sync is done
                 future.complete(task.call());
-            } catch (Exception e) {
-                throw new RuntimeException(e);
+            } catch (Throwable e) {
+                // Always complete the future, otherwise the async thread waits forever
+                future.completeExceptionally(e);
             }
         });
 
         // Block the async thread until the sync task completes
         try {
             return future.get(); // waits here until future.complete() is called
-        } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
-            return null;
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e.getCause());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
         }
     }
 }

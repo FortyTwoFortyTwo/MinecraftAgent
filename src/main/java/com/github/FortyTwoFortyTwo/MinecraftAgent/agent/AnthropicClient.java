@@ -181,7 +181,13 @@ public class AnthropicClient {
             if (!tool.getName().equals(toolName))
                 continue;
 
-            Map<String, Serializable> result = tool.execute(input);
+            // Same as MinecraftMcpServer, a failing tool is reported back to the model rather than ending the run
+            Map<String, Serializable> result;
+            try {
+                result = tool.execute(input);
+            } catch (Exception e) {
+                result = Map.of("error", String.valueOf(e));
+            }
             return MinecraftTools.GSON.toJsonTree(result);
         }
 

@@ -106,15 +106,17 @@ public class ExecuteCode implements com.github.FortyTwoFortyTwo.Shared.Minecraft
 
             // Execute instance
             return runTask(() -> {
+                CaptureLogsAppender capture = new CaptureLogsAppender();
                 try {
-                    CaptureLogsAppender capture = new CaptureLogsAppender();
                     clazz.getDeclaredConstructor().newInstance();
-                    capture.end();
-
                     return Map.of("success", true, "output", (Serializable) capture.getOutput());
-                } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
-                         NoSuchMethodException e) {
-                    return Map.of("success", false, "error", e.getMessage());
+                } catch (InvocationTargetException e) {
+                    // Thrown by the generated code itself, the real error is the cause, and getMessage() is usually null
+                    return Map.of("success", false, "error", String.valueOf(e.getCause()), "output", (Serializable) capture.getOutput());
+                } catch (ReflectiveOperationException e) {
+                    return Map.of("success", false, "error", String.valueOf(e));
+                } finally {
+                    capture.end();
                 }
             });
         } else {
