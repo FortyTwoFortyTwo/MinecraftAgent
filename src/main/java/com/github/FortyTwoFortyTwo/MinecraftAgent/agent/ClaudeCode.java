@@ -18,6 +18,7 @@ public class ClaudeCode {
     private final String builtInTools;
     private final String systemPrompt;
     private final boolean minecraftTools;
+    private final boolean forwardOutput;
 
     private Process process;
     private MinecraftMcpServer mcpServer;
@@ -27,13 +28,15 @@ public class ClaudeCode {
      * @param builtInTools   comma separated Claude Code tools to make available, or "" for none
      * @param systemPrompt   appended to Claude Code's system prompt, or null
      * @param minecraftTools whether to run an MCP server for this run offering the Minecraft tools
+     * @param forwardOutput  whether Claude Code's text output is sent to the sender, otherwise it's only logged to the console
      */
-    public ClaudeCode(String workingDirectory, CommandSender sender, String builtInTools, String systemPrompt, boolean minecraftTools) {
+    public ClaudeCode(String workingDirectory, CommandSender sender, String builtInTools, String systemPrompt, boolean minecraftTools, boolean forwardOutput) {
         this.workingDirectory = workingDirectory;
         this.sender = sender;
         this.builtInTools = builtInTools;
         this.systemPrompt = systemPrompt;
         this.minecraftTools = minecraftTools;
+        this.forwardOutput = forwardOutput;
     }
 
     /** Runs the prompt, blocking until it's stopped after 300 seconds, so call off the main thread */
@@ -189,7 +192,8 @@ public class ClaudeCode {
             String line;
             while ((line = reader.readLine()) != null) {
                 System.out.println("[Claude] " + line);
-                sender.sendMessage(line);
+                if (forwardOutput)
+                    sender.sendMessage(line);
             }
         } catch (IOException e) {
             System.out.println("[Claude] IOException: " + e);

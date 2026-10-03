@@ -8,6 +8,14 @@ import org.bukkit.command.CommandSender;
 /** Same as api, but runs through Claude Code connected to a Minecraft tools MCP server, so it can be billed to a Claude subscription */
 public class McpAgent implements AgentType {
 
+    /** Claude Code's text output is only logged to the console, so players only see what's sent through tools */
+    private static final String MCP_SYSTEM_PROMPT = SYSTEM_PROMPT + "\n" +
+            "Players cannot see your text replies; they are only written to the server console. " +
+            "To tell players anything (answers, progress, results), you must call the BroadcastMessage tool.\n" +
+            "Nobody can reply to you during this run, so never ask questions or wait for confirmation. " +
+            "Make reasonable assumptions and act on them, mentioning any assumptions in your broadcast.\n" +
+            "Keep your final text reply to a one-line summary for the server log.";
+
     @Override
     public String name() {
         return "mcp";
@@ -23,7 +31,7 @@ public class McpAgent implements AgentType {
         Bukkit.getScheduler().runTaskAsynchronously(MinecraftTools.plugin, () -> {
 
             // Only the Minecraft tools, the same set api gets, with none of Claude Code's built-in tools
-            ClaudeCode claude = new ClaudeCode(MinecraftTools.plugin.getDataFolder().getAbsolutePath(), sender, "", SYSTEM_PROMPT, true);
+            ClaudeCode claude = new ClaudeCode(MinecraftTools.plugin.getDataFolder().getAbsolutePath(), sender, "", MCP_SYSTEM_PROMPT, true, false);
 
             String message = String.join(" ", args);
 

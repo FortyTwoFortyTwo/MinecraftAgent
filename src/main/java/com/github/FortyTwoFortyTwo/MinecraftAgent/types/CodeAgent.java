@@ -57,7 +57,7 @@ public class CodeAgent implements AgentType {
 
         Bukkit.getScheduler().runTaskAsynchronously(MinecraftTools.plugin, () -> {
 
-            ClaudeCode claude = new ClaudeCode(directory.toString(), sender, "Read,Edit,Write,Glob,Grep", null, false);
+            ClaudeCode claude = new ClaudeCode(directory.toString(), sender, "Read,Edit,Write,Glob,Grep", null, false, true);
 
             String message = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
 
