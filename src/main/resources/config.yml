@@ -27,3 +27,20 @@ error-catcher:
   max-runs-per-hour: 5
 
 directories:
+
+# Every interval, a few random players submit a prompt, then everyone votes on which one gets sent to the agent
+prompt-vote:
+  enabled: true
+  # Agent type the winning prompt runs as, the same as /agent <type>. Arguments before the prompt can follow, e.g. "code <directory>".
+  # The prompt runs as the player who submitted it, with all of that type's tools, and its replies are shown to everyone.
+  type: "mcp"
+  interval-seconds: 120
+  # How many players are picked to submit a prompt each round. Players are picked from a shuffled list, so everyone gets a turn before anyone repeats.
+  submitters: 4
+  # Skip the round if fewer players than this are online
+  min-players: 1
+  submit-seconds: 60
+  vote-seconds: 30
+  max-prompt-length: 200
+  # How long a player whose prompt won can't be picked again
+  winner-cooldown-seconds: 1800

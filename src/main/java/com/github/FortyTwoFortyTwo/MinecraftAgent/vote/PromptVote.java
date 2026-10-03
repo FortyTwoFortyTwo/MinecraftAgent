@@ -1,0 +1,291 @@
+package com.github.FortyTwoFortyTwo.MinecraftAgent.vote;
+
+import com.github.FortyTwoFortyTwo.MinecraftAgent.MinecraftAgent;
+import com.github.FortyTwoFortyTwo.MinecraftAgent.types.AgentType;
+import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+import org.bukkit.Bukkit;
+import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitTask;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
+import java.util.*;
+
+/** Every interval, a few players submit prompts and everyone votes on which one gets sent to the agent */
+public class PromptVote {
+
+    private enum Phase { IDLE, SUBMIT, VOTE }
+
+    private record Submission(UUID player, String name, String prompt) {}
+
+    private static final Component PREFIX = Component.text("[Vote] ", NamedTextColor.GOLD);
+
+    // Shuffled players who haven't submitted yet this cycle, so everyone gets a turn before anyone repeats
+    private final List<UUID> bag = new ArrayList<>();
+    // Winners that can't be picked until the expiry time
+    private final Map<UUID, Long> cooldowns = new HashMap<>();
+
+    private final Set<UUID> chosen = new HashSet<>();
+    private final Map<UUID, Submission> submissions = new LinkedHashMap<>();
+    private final List<Submission> ballot = new ArrayList<>();
+    private final Map<UUID, Integer> votes = new HashMap<>();
+    private final Random random = new Random();
+
+    private Phase phase = Phase.IDLE;
+    private BukkitTask timer;
+    private BukkitTask phaseTask;
+
+    private static FileConfiguration config() {
+        return MinecraftTools.plugin.getConfig();
+    }
+
+    /** Schedules the next round, rescheduling every time so interval-seconds can change without a restart */
+    public void start() {
+        timer = Bukkit.getScheduler().runTaskLater(MinecraftTools.plugin, () -> {
+            if (config().getBoolean("prompt-vote.enabled"))
+                startRound();
+
+            start();
+        }, config().getInt("prompt-vote.interval-seconds") * 20L);
+    }
+
+    public void stop() {
+        if (timer != null)
+            timer.cancel();
+
+        timer = null;
+        reset();
+    }
+
+    /** Starts a round, unless one is already running or there aren't enough players */
+    private void startRound() {
+        if (phase != Phase.IDLE || Bukkit.getOnlinePlayers().size() < config().getInt("prompt-vote.min-players"))
+            return;
+
+        List<Player> picked = pickSubmitters();
+        if (picked.isEmpty())
+            return;
+
+        phase = Phase.SUBMIT;
+        picked.forEach(player -> chosen.add(player.getUniqueId()));
+
+        int submitSeconds = config().getInt("prompt-vote.submit-seconds");
+        String names = String.join(", ", picked.stream().map(Player::getName).toList());
+        broadcast(Component.text("Waiting on " + names + " to submit a prompt for the agent (" + submitSeconds + "s)...", NamedTextColor.YELLOW));
+
+        for (Player player : picked) {
+            player.sendMessage(PREFIX
+                    .append(Component.text("You've been picked to submit a prompt! ", NamedTextColor.GREEN))
+                    .append(Component.text("[Click to submit]", NamedTextColor.AQUA, TextDecoration.BOLD)
+                            .hoverEvent(HoverEvent.showText(Component.text("Type your prompt for the agent")))
+                            .clickEvent(ClickEvent.suggestCommand("/prompt "))));
+        }
+
+        phaseTask = Bukkit.getScheduler().runTaskLater(MinecraftTools.plugin, this::endSubmit, submitSeconds * 20L);
+    }
+
+    private List<Player> pickSubmitters() {
+        long now = System.currentTimeMillis();
+        cooldowns.values().removeIf(expiry -> expiry <= now);
+
+        List<Player> eligible = Bukkit.getOnlinePlayers().stream()
+                .filter(player -> !cooldowns.containsKey(player.getUniqueId()))
+                .map(player -> (Player) player)
+                .toList();
+
+        int submitters = config().getInt("prompt-vote.submitters");
+        List<Player> picked = new ArrayList<>();
+        takeFromBag(eligible, picked, submitters);
+
+        if (picked.size() < submitters) {
+            // Everyone eligible has had a turn, start a new shuffled cycle
+            List<UUID> refill = new ArrayList<>(eligible.stream()
+                    .filter(player -> !picked.contains(player))
+                    .map(Player::getUniqueId)
+                    .toList());
+
+            Collections.shuffle(refill, random);
+            bag.addAll(refill);
+            takeFromBag(eligible, picked, submitters);
+        }
+
+        return picked;
+    }
+
+    private void takeFromBag(List<Player> eligible, List<Player> picked, int submitters) {
+        Iterator<UUID> iterator = bag.iterator();
+        while (iterator.hasNext() && picked.size() < submitters) {
+            Player player = Bukkit.getPlayer(iterator.next());
+            if (player == null || !eligible.contains(player))
+                continue;
+
+            picked.add(player);
+            iterator.remove();
+        }
+    }
+
+    public void submit(Player player, String prompt) {
+        if (phase != Phase.SUBMIT || !chosen.contains(player.getUniqueId())) {
+            player.sendMessage(Component.text("You weren't picked to submit a prompt this round.", NamedTextColor.RED));
+            return;
+        }
+
+        if (prompt.isBlank()) {
+            player.sendMessage(Component.text("Usage: /prompt <prompt>", NamedTextColor.RED));
+            return;
+        }
+
+        int maxPromptLength = config().getInt("prompt-vote.max-prompt-length");
+        if (prompt.length() > maxPromptLength) {
+            player.sendMessage(Component.text("Prompt is too long, max " + maxPromptLength + " characters.", NamedTextColor.RED));
+            return;
+        }
+
+        boolean replaced = submissions.put(player.getUniqueId(), new Submission(player.getUniqueId(), player.getName(), prompt)) != null;
+        player.sendMessage(Component.text(replaced ? "Prompt updated." : "Prompt submitted.", NamedTextColor.GREEN));
+
+        // No need to wait out the timer once everyone has submitted
+        if (submissions.size() == chosen.size()) {
+            phaseTask.cancel();
+            endSubmit();
+        }
+    }
+
+    private void vote(Player player, Submission submission) {
+        // Buttons from an earlier round stay clickable in chat, so make sure this one is still on the ballot
+        if (phase != Phase.VOTE || !ballot.contains(submission)) {
+            player.sendMessage(Component.text("This vote has already ended.", NamedTextColor.RED));
+            return;
+        }
+
+        votes.put(player.getUniqueId(), ballot.indexOf(submission));
+        player.sendMessage(Component.text("Voted for " + submission.name() + "'s prompt.", NamedTextColor.GREEN));
+    }
+
+    private void endSubmit() {
+        if (submissions.isEmpty()) {
+            broadcast(Component.text("Nobody submitted a prompt, skipping this round.", NamedTextColor.RED));
+            reset();
+            return;
+        }
+
+        ballot.addAll(submissions.values());
+
+        phase = Phase.VOTE;
+        int voteSeconds = config().getInt("prompt-vote.vote-seconds");
+        broadcast(Component.text("Vote for which prompt to send to the agent (" + voteSeconds + "s):", NamedTextColor.YELLOW));
+
+        for (int i = 0; i < ballot.size(); i++) {
+            Submission submission = ballot.get(i);
+
+            // Only the button is clickable, not the prompt text
+            Component button = Component.text("[Click to vote]", NamedTextColor.GREEN, TextDecoration.BOLD)
+                    .hoverEvent(HoverEvent.showText(Component.text("Vote for " + submission.name() + "'s prompt")))
+                    .clickEvent(ClickEvent.callback(audience -> {
+                        if (audience instanceof Player player)
+                            vote(player, submission);
+                    }));
+
+            Bukkit.broadcast(Component.text((i + 1) + ". ", NamedTextColor.GRAY)
+                    .append(Component.text(submission.name() + ": ", NamedTextColor.GRAY))
+                    .append(Component.text(submission.prompt(), NamedTextColor.WHITE))
+                    .append(Component.text(" "))
+                    .append(button));
+        }
+
+        phaseTask = Bukkit.getScheduler().runTaskLater(MinecraftTools.plugin, this::endVote, voteSeconds * 20L);
+    }
+
+    private void endVote() {
+        if (votes.isEmpty()) {
+            broadcast(Component.text("Nobody voted, skipping this round.", NamedTextColor.RED));
+            reset();
+            return;
+        }
+
+        int[] counts = new int[ballot.size()];
+        for (int index : votes.values())
+            counts[index]++;
+
+        int max = Arrays.stream(counts).max().orElse(0);
+        List<Submission> tied = new ArrayList<>();
+
+        for (int i = 0; i < ballot.size(); i++) {
+            Bukkit.broadcast(Component.text(ballot.get(i).name() + ": " + counts[i] + " vote" + (counts[i] == 1 ? "" : "s"), NamedTextColor.GRAY));
+            if (counts[i] == max)
+                tied.add(ballot.get(i));
+        }
+
+        runWinner(tied.get(random.nextInt(tied.size())));
+    }
+
+    private void runWinner(Submission winner) {
+        cooldowns.put(winner.player(), System.currentTimeMillis() + config().getInt("prompt-vote.winner-cooldown-seconds") * 1000L);
+        reset();
+
+        // Type name, optionally followed by arguments that go before the prompt, e.g. "code <directory>"
+        // No explicit default, so a config.yml saved before this option existed falls back to the bundled one
+        String value = config().getString("prompt-vote.type");
+        String[] command = (value == null ? "" : value).trim().split("\\s+");
+        AgentType type = MinecraftAgent.types.get(command[0].toLowerCase());
+        if (type == null) {
+            broadcast(Component.text("prompt-vote.type '" + value + "' in config.yml isn't one of: " + String.join(", ", MinecraftAgent.types.keySet()), NamedTextColor.RED));
+            return;
+        }
+
+        broadcast(Component.text(winner.name() + "'s prompt was chosen: ", NamedTextColor.GREEN)
+                .append(Component.text(winner.prompt(), NamedTextColor.WHITE)));
+
+        Player player = Bukkit.getPlayer(winner.player());
+        if (player == null) {
+            broadcast(Component.text(winner.name() + " left, skipping their prompt.", NamedTextColor.RED));
+            return;
+        }
+
+        List<String> args = new ArrayList<>(Arrays.asList(command).subList(1, command.length));
+        args.addAll(Arrays.asList(winner.prompt().split(" ")));
+
+        type.run(broadcastingSender(player), args.toArray(String[]::new));
+    }
+
+    /** Acts as the given player, except every message sent to it goes to the whole server so everyone sees what their vote did */
+    private static CommandSender broadcastingSender(Player player) {
+        return (CommandSender) Proxy.newProxyInstance(CommandSender.class.getClassLoader(), new Class<?>[]{CommandSender.class}, (proxy, method, args) -> {
+            try {
+                if (!method.getName().equals("sendMessage"))
+                    return method.invoke(player, args);
+
+                for (Player online : Bukkit.getOnlinePlayers())
+                    method.invoke(online, args);
+
+                method.invoke(Bukkit.getConsoleSender(), args);
+                return null;
+            } catch (InvocationTargetException e) {
+                throw e.getCause();
+            }
+        });
+    }
+
+    private void reset() {
+        if (phaseTask != null)
+            phaseTask.cancel();
+
+        phaseTask = null;
+        phase = Phase.IDLE;
+        chosen.clear();
+        submissions.clear();
+        ballot.clear();
+        votes.clear();
+    }
+
+    private void broadcast(Component message) {
+        Bukkit.broadcast(PREFIX.append(message));
+    }
+}

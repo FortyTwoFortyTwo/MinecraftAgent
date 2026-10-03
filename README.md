@@ -70,6 +70,15 @@ Claude Code connects to it directly (`--mcp-config` with `"type": "http"`) and r
 It has none of Claude Code's built-in tools (`--tools ""`), only the same Minecraft tools `/agent api` gets.
 Tool calls are always made on behalf of the player who ran the command.
 
+### [Prompt Vote](https://github.com/FortyTwoFortyTwo/MinecraftAgent/blob/main/src/main/java/com/github/FortyTwoFortyTwo/MinecraftAgent/vote/PromptVote.java)
+
+When `prompt-vote.enabled` is set, every `prompt-vote.interval-seconds` a few random players are asked to submit a prompt with `/prompt <prompt>`.
+Players are picked from a shuffled list, so everyone gets a turn before anyone is picked again, and a player whose prompt wins can't be picked again for `winner-cooldown-seconds`.
+Everyone on the server then votes by clicking the `[Click to vote]` button next to a submission in chat. A tie is broken at random, and the round is skipped if nobody votes.
+The winning prompt runs as `/agent <prompt-vote.type>` on behalf of the player who submitted it, and the agent's replies are broadcast to the whole server.
+
+The prompt gets every tool the chosen type has, so any player picked to submit can effectively run operator commands if their prompt wins the vote.
+
 ### Claude subscription
 
 `/agent mcp` and `/agent code` go through Claude Code, so they can run on a Claude Pro/Max subscription instead of API credits.

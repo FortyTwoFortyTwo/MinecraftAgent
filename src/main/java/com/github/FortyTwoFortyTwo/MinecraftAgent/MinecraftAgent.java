@@ -4,10 +4,12 @@ import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.AnthropicClient;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.BridgeHttpServer;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.commands.AgentCommand;
+import com.github.FortyTwoFortyTwo.MinecraftAgent.commands.PromptCommand;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.types.AgentType;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.types.ApiAgent;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.types.CodeAgent;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.types.McpAgent;
+import com.github.FortyTwoFortyTwo.MinecraftAgent.vote.PromptVote;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.appender.ErrorCatcherAppender;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.Logger;
@@ -30,6 +32,8 @@ public class MinecraftAgent extends JavaPlugin {
 
     private ErrorCatcherAppender errorAppender;
 
+    private PromptVote promptVote;
+
     @Override
     public void onEnable() {
         MinecraftTools.plugin = this;
@@ -48,6 +52,8 @@ public class MinecraftAgent extends JavaPlugin {
         rootLogger.addAppender(errorAppender);
 
 
+        promptVote = new PromptVote();
+
         // Agent types available through /agent <type>
         for (AgentType type : List.of(new ApiAgent(anthropic), new McpAgent(), new CodeAgent(getConfig())))
             types.put(type.name(), type);
@@ -55,6 +61,9 @@ public class MinecraftAgent extends JavaPlugin {
         // Register commands
         CommandMap commandMap = Bukkit.getServer().getCommandMap();
         commandMap.register("agent", new AgentCommand());
+        commandMap.register("agent", new PromptCommand(promptVote));
+
+        promptVote.start();
 
         if (getConfig().getBoolean("bridge.enabled")) {
             startBridge();
@@ -91,6 +100,9 @@ public class MinecraftAgent extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (promptVote != null)
+            promptVote.stop();
+
         if (bridgeServer != null) {
             bridgeServer.stop();
             getLogger().info("MCP Bridge HTTP server stopped.");
