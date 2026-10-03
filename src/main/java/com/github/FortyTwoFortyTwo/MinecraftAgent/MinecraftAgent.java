@@ -12,21 +12,17 @@ import com.github.FortyTwoFortyTwo.MinecraftAgent.types.McpAgent;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.vote.PromptVote;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.appender.ErrorCatcherAppender;
 import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.core.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandMap;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.security.SecureRandom;
-import java.util.Base64;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 public class MinecraftAgent extends JavaPlugin {
-
-    public static final Map<String, AgentType> types = new LinkedHashMap<>();
 
     private BridgeHttpServer bridgeServer;
 
@@ -42,25 +38,22 @@ public class MinecraftAgent extends JavaPlugin {
 
         AnthropicClient anthropic = new AnthropicClient(getConfig());
 
-        // Catch any errors
+        // Catch any errors, attached to the root logger so ALL plugins are covered
         errorAppender = new ErrorCatcherAppender(anthropic, getConfig());
         errorAppender.start();
+        rootLoggerContext().getRootLogger().addAppender(errorAppender);
 
-        // Attach to the root logger so ALL plugins are covered
-        LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
-        Logger rootLogger = ctx.getRootLogger();
-        rootLogger.addAppender(errorAppender);
-
-
-        promptVote = new PromptVote();
-
-        // Agent types available through /agent <type>
+        // Agent types available through /agent <type>, by name
+        Map<String, AgentType> types = new LinkedHashMap<>();
         for (AgentType type : List.of(new ApiAgent(anthropic), new McpAgent(), new CodeAgent(getConfig())))
             types.put(type.name(), type);
 
+        types = Collections.unmodifiableMap(types);
+        promptVote = new PromptVote(types);
+
         // Register commands
         CommandMap commandMap = Bukkit.getServer().getCommandMap();
-        commandMap.register("agent", new AgentCommand());
+        commandMap.register("agent", new AgentCommand(types));
         commandMap.register("agent", new PromptCommand(promptVote));
 
         promptVote.start();
@@ -78,9 +71,7 @@ public class MinecraftAgent extends JavaPlugin {
 
         // Never run the bridge with an empty or publicly known secret
         if (secret.isBlank() || secret.equals("super-secret-password")) {
-            byte[] bytes = new byte[32];
-            new SecureRandom().nextBytes(bytes);
-            secret = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+            secret = MinecraftTools.randomSecret();
 
             getConfig().set("bridge.secret", secret);
             saveConfig();
@@ -109,9 +100,12 @@ public class MinecraftAgent extends JavaPlugin {
         }
 
         if (errorAppender != null) {
-            LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
-            ctx.getRootLogger().removeAppender(errorAppender);
+            rootLoggerContext().getRootLogger().removeAppender(errorAppender);
             errorAppender.stop();
         }
+    }
+
+    private static LoggerContext rootLoggerContext() {
+        return (LoggerContext) LogManager.getContext(false);
     }
 }

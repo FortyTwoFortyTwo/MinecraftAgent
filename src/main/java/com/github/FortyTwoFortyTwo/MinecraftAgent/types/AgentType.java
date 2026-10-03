@@ -1,5 +1,6 @@
 package com.github.FortyTwoFortyTwo.MinecraftAgent.types;
 
+import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.AgentProgress;
 import org.bukkit.command.CommandSender;
 
 import java.util.List;

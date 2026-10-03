@@ -1,6 +1,7 @@
 package com.github.FortyTwoFortyTwo.Shared.Tools;
 
-import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
+import com.github.FortyTwoFortyTwo.Shared.MinecraftTool;
+import com.github.FortyTwoFortyTwo.Shared.WorkingDirectories;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
@@ -8,142 +9,108 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Stream;
 
-public class TextEditor implements com.github.FortyTwoFortyTwo.Shared.MinecraftTool {
+/** Anthropic's text editor tool, with the schema and description provided by Anthropic and only the editing done here */
+public class TextEditor implements MinecraftTool {
 
+    @Override
     public String getType() {
         return "text_editor_20250728";
     }
 
+    @Override
     public String getName() {
         return "str_replace_based_edit_tool";
     }
 
+    @Override
     public Map<String, Serializable> execute(JsonObject input) {
         String command = input.get("command").getAsString();
 
-        String result = switch (command) {
-            case "view"        -> handleView(input);
-            case "str_replace" -> handleStrReplace(input);
-            case "insert"      -> handleInsert(input);
-            case "create"      -> handleCreate(input);
-            default            -> "ERROR: Unknown command: " + command;
-        };
+        try {
+            String output = switch (command) {
+                case "view"        -> view(input);
+                case "str_replace" -> strReplace(input);
+                case "insert"      -> insert(input);
+                case "create"      -> create(input);
+                default            -> throw new IllegalArgumentException("Unknown command: " + command);
+            };
 
-        if (result.startsWith("ERROR: "))
-            return Map.of("success", false, "error", result.replace("ERROR: ", ""));
-        else
-            return Map.of("success", true, "output", result);
+            return Map.of("success", true, "output", output);
+        } catch (Exception e) {
+            return Map.of("success", false, "error", Objects.requireNonNullElse(e.getMessage(), e.toString()));
+        }
     }
 
     // View a file or directory listing
-    private String handleView(JsonObject input) {
-        String path = input.get("path").getAsString();
-        try {
-            java.io.File file = resolveAllowed(path).toFile();
-            if (file.isDirectory())
-                return String.join("\n", file.list());
-
-            // Optional: respect view_range if provided
-            JsonArray range = input.getAsJsonArray("view_range");
-            String content = java.nio.file.Files.readString(file.toPath());
-            if (range != null) {
-                String[] lines = content.split("\n");
-                int start = range.get(0).getAsInt() - 1; // 1-indexed
-                int end   = Math.min(range.get(1).getAsInt(), lines.length);
-                return String.join("\n", Arrays.copyOfRange(lines, start, end));
+    private String view(JsonObject input) throws IOException {
+        Path path = WorkingDirectories.resolve(input.get("path").getAsString());
+        if (Files.isDirectory(path)) {
+            try (Stream<Path> children = Files.list(path)) {
+                return String.join("\n", children.map(child -> child.getFileName().toString()).sorted().toList());
             }
-            return content;
-        } catch (Exception e) {
-            return "ERROR: " + e.getMessage();
         }
+
+        String content = Files.readString(path);
+
+        JsonArray range = input.getAsJsonArray("view_range");
+        if (range == null)
+            return content;
+
+        // 1-indexed and inclusive, with -1 as the end meaning the end of the file
+        String[] lines = content.split("\n");
+        int start = Math.max(range.get(0).getAsInt() - 1, 0);
+        int end = range.get(1).getAsInt() == -1 ? lines.length : Math.min(range.get(1).getAsInt(), lines.length);
+        if (start > end)
+            throw new IllegalArgumentException("view_range starts past the end of the file, which has " + lines.length + " lines.");
+
+        return String.join("\n", Arrays.copyOfRange(lines, start, end));
     }
 
     // Replace exact string in a file
-    private String handleStrReplace(JsonObject input) {
-        String path = input.get("path").getAsString();
+    private String strReplace(JsonObject input) throws IOException {
+        Path path = WorkingDirectories.resolve(input.get("path").getAsString());
         String oldStr = input.get("old_str").getAsString();
-        String newStr = input.get("new_str").getAsString();
-        try {
-            java.nio.file.Path p = resolveAllowed(path);
-            String content = java.nio.file.Files.readString(p);
-            if (!content.contains(oldStr)) {
-                return "ERROR: old_str not found in file. No changes made.";
-            }
-            // Ensure only one occurrence — str_replace expects uniqueness
-            if (content.indexOf(oldStr) != content.lastIndexOf(oldStr)) {
-                return "ERROR: old_str appears multiple times. Provide more context to make it unique.";
-            }
-            java.nio.file.Files.writeString(p, content.replace(oldStr, newStr));
-            return "OK: Replacement made successfully.";
-        } catch (Exception e) {
-            return "ERROR: " + e.getMessage();
-        }
+        String newStr = input.has("new_str") ? input.get("new_str").getAsString() : "";
+
+        String content = Files.readString(path);
+        int index = content.indexOf(oldStr);
+        if (index == -1)
+            throw new IllegalArgumentException("old_str not found in file. No changes made.");
+
+        // str_replace expects uniqueness
+        if (index != content.lastIndexOf(oldStr))
+            throw new IllegalArgumentException("old_str appears multiple times. Provide more context to make it unique.");
+
+        Files.writeString(path, content.replace(oldStr, newStr));
+        return "Replacement made successfully.";
     }
 
-    // Insert lines after a given line number
-    private String handleInsert(JsonObject input) {
-        String path = input.get("path").getAsString();
+    // Insert lines after a given line number, 0 being the start of the file
+    private String insert(JsonObject input) throws IOException {
+        Path path = WorkingDirectories.resolve(input.get("path").getAsString());
         int insertLine = input.get("insert_line").getAsInt();
         String newStr = input.get("new_str").getAsString();
-        try {
-            java.nio.file.Path p = resolveAllowed(path);
-            List<String> lines = new java.util.ArrayList<>(
-                    java.nio.file.Files.readAllLines(p)
-            );
-            lines.add(insertLine, newStr); // inserts after the given line
-            java.nio.file.Files.write(p, lines);
-            return "OK: Lines inserted.";
-        } catch (Exception e) {
-            return "ERROR: " + e.getMessage();
-        }
+
+        List<String> lines = new ArrayList<>(Files.readAllLines(path));
+        lines.add(insertLine, newStr);
+        Files.write(path, lines);
+        return "Lines inserted.";
     }
 
     // Create a new file (or overwrite)
-    private String handleCreate(JsonObject input) {
-        String path = input.get("path").getAsString();
+    private String create(JsonObject input) throws IOException {
+        Path path = WorkingDirectories.resolve(input.get("path").getAsString());
         String content = input.get("file_text").getAsString();
-        try {
-            java.nio.file.Files.writeString(
-                    resolveAllowed(path),
-                    content,
-                    java.nio.file.StandardOpenOption.CREATE,
-                    java.nio.file.StandardOpenOption.TRUNCATE_EXISTING
-            );
-            return "OK: File created.";
-        } catch (Exception e) {
-            return "ERROR: " + e.getMessage();
-        }
-    }
 
-    // Only allow paths inside the configured working directories, and never this plugin's own data folder (holds API keys)
-    private Path resolveAllowed(String rawPath) throws IOException {
-        Path path = realPath(Path.of(rawPath).toAbsolutePath().normalize());
-
-        Path dataFolder = realPath(MinecraftTools.plugin.getDataFolder().toPath().toAbsolutePath().normalize());
-        if (path.startsWith(dataFolder))
-            throw new SecurityException("Access to " + path + " is not allowed.");
-
-        for (String dir : MinecraftTools.plugin.getConfig().getStringList("directories")) {
-            if (path.startsWith(realPath(Path.of(dir).toAbsolutePath().normalize())))
-                return path;
-        }
-
-        throw new SecurityException(path + " is outside of the working directories. Call ListWorkingDirectories to see what's available.");
-    }
-
-    // Resolves symlinks through the deepest existing ancestor, so files that don't exist yet are still checked
-    private static Path realPath(Path path) throws IOException {
-        Path existing = path;
-        while (existing != null && !Files.exists(existing))
-            existing = existing.getParent();
-
-        if (existing == null)
-            return path;
-
-        return existing.toRealPath().resolve(existing.relativize(path)).normalize();
+        Files.writeString(path, content, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        return "File created.";
     }
 }

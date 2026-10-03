@@ -1,7 +1,6 @@
 package com.github.FortyTwoFortyTwo.MinecraftAgent.commands;
 
-import com.github.FortyTwoFortyTwo.MinecraftAgent.MinecraftAgent;
-import com.github.FortyTwoFortyTwo.MinecraftAgent.types.AgentProgress;
+import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.AgentProgress;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.types.AgentType;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -13,19 +12,23 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 public class AgentCommand extends BukkitCommand {
 
-    public AgentCommand() {
+    private final Map<String, AgentType> types;
+
+    public AgentCommand(Map<String, AgentType> types) {
         super("agent");
+        this.types = types;
     }
 
     @Override
     public @NotNull List<String> tabComplete(CommandSender sender, String alias, String[] args) {
         if (args.length == 1)
-            return StringUtil.copyPartialMatches(args[0], MinecraftAgent.types.keySet(), new ArrayList<>());
+            return StringUtil.copyPartialMatches(args[0], types.keySet(), new ArrayList<>());
 
-        AgentType type = MinecraftAgent.types.get(args[0].toLowerCase());
+        AgentType type = types.get(args[0].toLowerCase());
         if (type == null)
             return List.of();
 
@@ -39,9 +42,9 @@ public class AgentCommand extends BukkitCommand {
             return true;
         }
 
-        AgentType type = args.length < 2 ? null : MinecraftAgent.types.get(args[0].toLowerCase());
+        AgentType type = args.length < 2 ? null : types.get(args[0].toLowerCase());
         if (type == null) {
-            for (AgentType usage : MinecraftAgent.types.values())
+            for (AgentType usage : types.values())
                 sender.sendMessage(Component.text("Usage: /agent " + usage.name() + " " + usage.usage(), NamedTextColor.RED));
 
             return true;

@@ -2,7 +2,6 @@ package com.github.FortyTwoFortyTwo.MinecraftAgent.agent;
 
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTool;
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
-import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
@@ -16,8 +15,6 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
-import java.security.SecureRandom;
-import java.util.Base64;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -31,18 +28,13 @@ public class MinecraftMcpServer {
     private static final String PATH = "/mcp";
 
     private final String sender;
-    private final String secret;
-    private final Gson gson = new Gson();
+    private final String secret = MinecraftTools.randomSecret();
 
     private HttpServer server;
     private ExecutorService executor;
 
     public MinecraftMcpServer(String sender) {
         this.sender = sender;
-
-        byte[] bytes = new byte[32];
-        new SecureRandom().nextBytes(bytes);
-        this.secret = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
     public void start() throws IOException {
@@ -69,17 +61,12 @@ public class MinecraftMcpServer {
     }
 
     private void handle(HttpExchange exchange) throws IOException {
-
-        // Reject requests addressed to any other host name, blocking DNS rebinding from browser pages
-        int port = server.getAddress().getPort();
-        String host = exchange.getRequestHeaders().getFirst("Host");
-        if (host == null || !(host.equalsIgnoreCase("127.0.0.1:" + port) || host.equalsIgnoreCase("localhost:" + port))) {
+        if (!MinecraftTools.isLocalHost(exchange, server.getAddress().getPort())) {
             MinecraftTools.sendJson(exchange, 403, Map.of("error", "Invalid Host header"));
             return;
         }
 
-        // Every tool shares the same secret check
-        if (!MinecraftTools.list.getFirst().isAuthorized(exchange, secret)) {
+        if (!MinecraftTools.hasSecret(exchange, secret)) {
             MinecraftTools.sendJson(exchange, 403, Map.of("error", "Unauthorized"));
             return;
         }
@@ -94,7 +81,7 @@ public class MinecraftMcpServer {
 
         JsonElement body;
         try {
-            body = gson.fromJson(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8), JsonElement.class);
+            body = MinecraftTools.GSON.fromJson(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8), JsonElement.class);
         } catch (JsonParseException e) {
             body = null;
         }
@@ -148,14 +135,14 @@ public class MinecraftMcpServer {
                     JsonObject definition = new JsonObject();
                     definition.addProperty("name", tool.getName());
                     definition.addProperty("description", tool.getDescription());
-                    definition.add("inputSchema", gson.toJsonTree(tool.getInputSchema()));
+                    definition.add("inputSchema", tool.getInputSchemaJson());
                     tools.add(definition);
                 }
                 result.add("tools", tools);
             }
             case "tools/call" -> {
                 String name = params.has("name") ? params.get("name").getAsString() : "";
-                MinecraftTool tool = MinecraftTools.list.stream().filter(t -> t.getName().equals(name)).findFirst().orElse(null);
+                MinecraftTool tool = MinecraftTools.find(name).orElse(null);
                 if (tool == null)
                     return rpcError(id, -32602, "Unknown tool " + name);
 
@@ -166,22 +153,17 @@ public class MinecraftMcpServer {
                 // Same as AnthropicClient, never trust a sender the model made up
                 arguments.addProperty("sender", sender);
 
-                Map<String, Serializable> output;
-                try {
-                    output = tool.execute(arguments);
-                } catch (Exception e) {
-                    output = Map.of("error", String.valueOf(e));
-                }
+                Map<String, Serializable> output = tool.safeExecute(arguments);
 
                 JsonObject content = new JsonObject();
                 content.addProperty("type", "text");
-                content.addProperty("text", gson.toJson(output));
+                content.addProperty("text", MinecraftTools.GSON.toJson(output));
 
                 JsonArray contents = new JsonArray();
                 contents.add(content);
 
                 result.add("content", contents);
-                result.addProperty("isError", output == null || output.containsKey("error"));
+                result.addProperty("isError", output.containsKey("error"));
             }
             default -> {
                 return rpcError(id, -32601, "Method not found");

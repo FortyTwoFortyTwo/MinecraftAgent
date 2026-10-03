@@ -1,5 +1,6 @@
 package com.github.FortyTwoFortyTwo.Shared.Tools;
 
+import com.github.FortyTwoFortyTwo.Shared.MinecraftTool;
 import com.google.gson.JsonObject;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
@@ -7,14 +8,16 @@ import org.bukkit.World;
 import java.io.Serializable;
 import java.util.Map;
 
-public class GetWorldInfo implements com.github.FortyTwoFortyTwo.Shared.MinecraftTool {
+public class GetWorldInfo implements MinecraftTool {
 
+    @Override
     public String getDescription() {
-        return "Runs a command on the Minecraft server console with operator-level privileges. Use with caution.";
+        return "Returns the main world's name, time of day, weather, player count and seed.";
     }
 
+    @Override
     public Map<String, Serializable> execute(JsonObject input) {
-        World world = Bukkit.getWorlds().get(0);
+        World world = Bukkit.getWorlds().getFirst();
         return Map.of(
                 "name", world.getName(),
                 "time", world.getTime(),

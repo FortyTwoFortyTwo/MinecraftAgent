@@ -1,14 +1,14 @@
 package com.github.FortyTwoFortyTwo.Shared;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.sun.net.httpserver.HttpExchange;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.bukkit.Bukkit;
 
 import java.io.Serializable;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
@@ -24,8 +24,16 @@ public interface MinecraftTool {
         return null;
     }
 
-    default Map<String, Serializable> execute(JsonObject input) {
-        return null;
+    /** Runs the tool, returning an "error" key for anything the model got wrong. Call safeExecute rather than this. */
+    Map<String, Serializable> execute(JsonObject input) throws Exception;
+
+    /** Same as execute, but a failing tool is reported back as an error rather than thrown, so the model can retry */
+    default Map<String, Serializable> safeExecute(JsonObject input) {
+        try {
+            return execute(input);
+        } catch (Exception e) {
+            return Map.of("error", String.valueOf(e));
+        }
     }
 
     default String getName() {
@@ -45,6 +53,11 @@ public interface MinecraftTool {
         return objectSchema(Map.of());
     }
 
+    /** The input schema as JSON, for tool definitions sent to the model */
+    default JsonElement getInputSchemaJson() {
+        return MinecraftTools.GSON.toJsonTree(getInputSchema());
+    }
+
     default Map<String, Object> stringSchema() {
         return Map.of("type", "string");
     }
@@ -56,17 +69,19 @@ public interface MinecraftTool {
         );
     }
 
+    /** Schema where every property is required */
     default McpSchema.JsonSchema objectSchema(Map<String, Object> properties) {
-        return new McpSchema.JsonSchema("object", properties, new ArrayList<>(properties.keySet()), false, null, null);
+        return objectSchema(properties, Map.of());
+    }
+
+    default McpSchema.JsonSchema objectSchema(Map<String, Object> required, Map<String, Object> optional) {
+        Map<String, Object> properties = new HashMap<>(required);
+        properties.putAll(optional);
+        return new McpSchema.JsonSchema("object", properties, new ArrayList<>(required.keySet()), false, null, null);
     }
 
     default boolean isAuthorized(HttpExchange exchange, String secret) {
-        String header = exchange.getRequestHeaders().getFirst("X-MCP-Secret");
-        if (header == null)
-            return false;
-
-        // Constant-time comparison so the secret can't be guessed through response timing
-        return MessageDigest.isEqual(secret.getBytes(StandardCharsets.UTF_8), header.getBytes(StandardCharsets.UTF_8));
+        return MinecraftTools.hasSecret(exchange, secret);
     }
 
     default void runTask(Runnable task) {
@@ -80,7 +95,7 @@ public interface MinecraftTool {
         CompletableFuture<T> future = new CompletableFuture<>();
 
         // Schedule a sync task
-        Bukkit.getScheduler().runTask(com.github.FortyTwoFortyTwo.Shared.MinecraftTools.plugin, () -> {
+        Bukkit.getScheduler().runTask(MinecraftTools.plugin, () -> {
 
             try {
                 // Call the task. then signal that the sync is done

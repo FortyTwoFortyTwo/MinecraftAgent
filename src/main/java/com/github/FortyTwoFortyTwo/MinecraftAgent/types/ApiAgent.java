@@ -1,5 +1,6 @@
 package com.github.FortyTwoFortyTwo.MinecraftAgent.types;
 
+import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.AgentProgress;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.AnthropicClient;
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import org.bukkit.command.CommandSender;

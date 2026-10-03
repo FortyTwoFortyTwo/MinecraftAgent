@@ -1,4 +1,4 @@
-package com.github.FortyTwoFortyTwo.MinecraftAgent.types;
+package com.github.FortyTwoFortyTwo.MinecraftAgent.agent;
 
 /** Told how far an agent run has got, so it can be shown to players. Called from any thread. */
 public interface AgentProgress {

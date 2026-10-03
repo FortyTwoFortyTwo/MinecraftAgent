@@ -1,6 +1,6 @@
 package com.github.FortyTwoFortyTwo.MinecraftAgent.vote;
 
-import com.github.FortyTwoFortyTwo.MinecraftAgent.MinecraftAgent;
+import com.github.FortyTwoFortyTwo.MinecraftAgent.bossbar.AgentBossBar;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.types.AgentType;
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import net.kyori.adventure.bossbar.BossBar;
@@ -27,6 +27,9 @@ public class PromptVote {
 
     private record Submission(UUID player, Component displayName, String prompt) {}
 
+    // Agent types the winning prompt can run as, by name
+    private final Map<String, AgentType> types;
+
     // Shuffled players who haven't submitted yet this cycle, so everyone gets a turn before anyone repeats
     private final List<UUID> bag = new ArrayList<>();
     // Winners that can't be picked until the expiry time
@@ -44,6 +47,10 @@ public class PromptVote {
     private Phase phase = Phase.IDLE;
     private BukkitTask timer;
     private BukkitTask phaseTask;
+
+    public PromptVote(Map<String, AgentType> types) {
+        this.types = types;
+    }
 
     private static FileConfiguration config() {
         return MinecraftTools.plugin.getConfig();
@@ -255,9 +262,9 @@ public class PromptVote {
         // No explicit default, so a config.yml saved before this option existed falls back to the bundled one
         String value = config().getString("prompt-vote.type");
         String[] command = (value == null ? "" : value).trim().split("\\s+");
-        AgentType type = MinecraftAgent.types.get(command[0].toLowerCase());
+        AgentType type = types.get(command[0].toLowerCase());
         if (type == null) {
-            broadcast(Component.text("prompt-vote.type '" + value + "' in config.yml isn't one of: " + String.join(", ", MinecraftAgent.types.keySet()), NamedTextColor.RED));
+            broadcast(Component.text("prompt-vote.type '" + value + "' in config.yml isn't one of: " + String.join(", ", types.keySet()), NamedTextColor.RED));
             return;
         }
 

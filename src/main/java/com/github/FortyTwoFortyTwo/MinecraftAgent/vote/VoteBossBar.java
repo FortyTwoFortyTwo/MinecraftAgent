@@ -1,5 +1,6 @@
 package com.github.FortyTwoFortyTwo.MinecraftAgent.vote;
 
+import com.github.FortyTwoFortyTwo.MinecraftAgent.bossbar.BroadcastBossBar;
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;

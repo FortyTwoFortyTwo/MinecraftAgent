@@ -1,16 +1,5 @@
-buildscript {
-    repositories {
-        mavenCentral()
-        gradlePluginPortal()
-    }
-    dependencies {
-        classpath "com.github.spotbugs.snom:spotbugs-gradle-plugin:5.2.5"
-        classpath "com.gradleup.shadow:shadow-gradle-plugin:9.0.2"
-    }
-}
-
 plugins {
-    id "xyz.jpenilla.run-paper" version "2.3.1" apply false
+    id "java"
     id "com.gradleup.shadow" version "9.0.2"
 }
 
@@ -20,30 +9,13 @@ ext {
     PAPER_VERSION = MINECRAFT_VERSION + ".build.+"
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Shared config for ALL source sets (plugin + bridge)
-// ─────────────────────────────────────────────────────────────────────────────
-
-allprojects {
-    repositories {
-        mavenCentral()
-        maven {
-            name = "papermc-repo"
-            url = "https://repo.papermc.io/repository/maven-public/"
-        }
-        maven {
-            name = "sk89q-repo"
-            url = "https://maven.enginehub.org/repo/"
-        }
-        maven {
-            name = "spigot-repo"
-            url = "https://hub.spigotmc.org/nexus/content/repositories/snapshots/"
-        }
+repositories {
+    mavenCentral()
+    maven {
+        name = "papermc-repo"
+        url = "https://repo.papermc.io/repository/maven-public/"
     }
 }
-
-apply plugin: "java"
-apply plugin: "com.gradleup.shadow"
 
 group = "com.github.FortyTwoFortyTwo"
 version = "1.0.0"
@@ -60,29 +32,8 @@ java {
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
     options.deprecation = true
-
-    options.compilerArgs += [
-            '-Xlint:all',
-            '-Xlint:-processing',
-            '-Xlint:-serial',
-            '-Xlint:-this-escape',
-            '-Xlint:unchecked',
-            '-Xlint:cast',
-            '-Xlint:deprecation',
-            '-Xlint:divzero',
-            '-Xlint:empty',
-            '-Xlint:fallthrough',
-            '-Xlint:finally',
-            '-Xlint:overrides',
-            '-Xlint:path',
-            '-Xlint:rawtypes',
-            '-Xlint:static',
-            '-Xlint:try'
-    ]
-
-    if (JAVA_VERSION >= 10 || JavaVersion.current().isJava10Compatible()) {
-        options.release.set(JAVA_VERSION)
-    }
+    options.release.set(JAVA_VERSION)
+    options.compilerArgs += ['-Xlint:all', '-Xlint:-processing', '-Xlint:-serial', '-Xlint:-this-escape']
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -94,8 +45,12 @@ tasks.withType(JavaCompile).configureEach {
 
 sourceSets {
     main {
+        // Disable the default src/main so nothing leaks into both
         java {
-            srcDirs = [] // disable default src/main/java so nothing leaks into both
+            srcDirs = []
+        }
+        resources {
+            srcDirs = []
         }
     }
 
@@ -137,10 +92,10 @@ sourceSets {
 
 dependencies {
     // ── MinecraftAgent (Bukkit plugin) ──────────────────────────────────────
+    // Log4j is provided by the server, the plugin hooks into its loggers
     minecraftAgentCompileOnly("io.papermc.paper:paper-api:" + project.PAPER_VERSION)
+    minecraftAgentCompileOnly("org.apache.logging.log4j:log4j-core:2.25.3")
     minecraftAgentImplementation("io.modelcontextprotocol.sdk:mcp-json-jackson2:0.18.1")
-    minecraftAgentImplementation("org.apache.logging.log4j:log4j-core:2.25.3")
-    minecraftAgentImplementation("org.apache.logging.log4j:log4j-api:2.25.3")
     minecraftAgentImplementation("org.eclipse.jgit:org.eclipse.jgit:7.6.0.202603022253-r")
 
     // ── McpBridge (standalone MCP JAR) ──────────────────────────────────────
@@ -151,17 +106,16 @@ dependencies {
     mcpBridgeImplementation("com.google.code.gson:gson:2.13.2")
 
     // ── Shared ──────────────────────────────────────────────────────────────
+    // Only compiled against, each JAR above ships what it needs at runtime
     sharedCompileOnly("io.papermc.paper:paper-api:" + project.PAPER_VERSION)
-    sharedImplementation("com.google.code.gson:gson:2.13.2")
-    sharedImplementation("io.modelcontextprotocol.sdk:mcp:0.18.1")
-    sharedImplementation("io.modelcontextprotocol.sdk:mcp-json-jackson2:0.18.1")
-    sharedImplementation("org.apache.logging.log4j:log4j-core:2.25.3")
-    sharedImplementation("org.apache.logging.log4j:log4j-api:2.25.3")
-    sharedImplementation("org.eclipse.jgit:org.eclipse.jgit:7.6.0.202603022253-r")
+    sharedCompileOnly("com.google.code.gson:gson:2.13.2")
+    sharedCompileOnly("io.modelcontextprotocol.sdk:mcp:0.18.1")
+    sharedCompileOnly("org.apache.logging.log4j:log4j-core:2.25.3")
+    sharedCompileOnly("org.eclipse.jgit:org.eclipse.jgit:7.6.0.202603022253-r")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shadow JAR — MinecraftAgent plugin
+// Shadow JARs
 // ─────────────────────────────────────────────────────────────────────────────
 
 tasks.register("shadowMinecraftAgent", com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
@@ -178,17 +132,7 @@ tasks.register("shadowMinecraftAgent", com.github.jengelman.gradle.plugins.shado
 
     // Signed dependencies (e.g. JGit) ship signature files that become invalid once shaded
     exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA", "META-INF/*.EC")
-
-    def base = "com.github.FortyTwoFortyTwo.libs."
-    relocate("com.zaxxer.hikari",  "${base}hikari")
-    relocate("org.postgresql",     "${base}postgresql")
-    relocate("org.json",           "${base}json")
-    relocate("com.google.common",  "${base}guava")
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Shadow JAR — McpBridge standalone
-// ─────────────────────────────────────────────────────────────────────────────
 
 tasks.register("shadowMcpBridge", com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
     group = "build"
@@ -210,10 +154,7 @@ tasks.register("shadowMcpBridge", com.github.jengelman.gradle.plugins.shadow.tas
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Disable the default jar/shadowJar tasks (we use our own above)
-// ─────────────────────────────────────────────────────────────────────────────
-
+// The default jar/shadowJar tasks are replaced by the two above
 jar {
     enabled = false
 }
@@ -222,103 +163,15 @@ shadowJar {
     enabled = false
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Wire both into the standard build task
-// ─────────────────────────────────────────────────────────────────────────────
-
 build {
     dependsOn(shadowMinecraftAgent, shadowMcpBridge)
 }
 
-processResources {
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE  // ← fix the duplicate error
-
-    // Clear default source dirs and only use minecraftAgent's resources
-    from(sourceSets.minecraftAgent.resources)
+processMinecraftAgentResources {
     def props = [version: version]
     inputs.properties props
     filteringCharset = 'UTF-8'
     filesMatching('plugin.yml') {
         expand props
     }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Utility tasks (preserved from original)
-// ─────────────────────────────────────────────────────────────────────────────
-
-tasks.register('createConfigDirs') {
-    doLast {
-        mkdir "${rootDir}/config/checkstyle"
-    }
-}
-
-tasks.register('qualityCheck') {
-    group = 'verification'
-    description = 'Runs all code quality checks and displays warnings'
-    dependsOn 'compileMinecraftAgentJava', 'compileMcpBridgeJava'
-
-    doLast {
-        println "\n" + "=" * 80
-        println "QUALITY CHECK COMPLETE"
-        println "=" * 80
-        println "\nBoth MinecraftAgent and McpBridge compiled successfully."
-        println "=" * 80
-    }
-}
-
-tasks.register('showWarnings') {
-    group = 'verification'
-    description = 'Shows a summary of all warnings and issues'
-
-    doLast {
-        println "\n" + "=" * 80
-        println "WARNING SUMMARY"
-        println "=" * 80
-
-        def sourceDir = file("${projectDir}/src/main/java")
-        def todoCount = 0
-        def fixmeCount = 0
-
-        if (sourceDir.exists()) {
-            sourceDir.eachFileRecurse { file ->
-                if (file.name.endsWith('.java')) {
-                    file.eachLine { line ->
-                        if (line.contains('TODO')) todoCount++
-                        if (line.contains('FIXME')) fixmeCount++
-                        if (line.contains('XXX')) todoCount++
-                        if (line.contains('HACK')) todoCount++
-                    }
-                }
-            }
-        }
-
-        println "TODOs found: ${todoCount}"
-        println "FIXMEs found: ${fixmeCount}"
-        println "\nRun 'gradle qualityCheck' for comprehensive analysis"
-        println "=" * 80
-    }
-}
-
-tasks.register('showConfig') {
-    group = 'help'
-    description = 'Shows the current build configuration'
-
-    doLast {
-        println "\nBUILD CONFIGURATION:"
-        println "-" * 40
-        println "Java version: ${JAVA_VERSION}"
-        println "Encoding: UTF-8"
-        println "Deprecation warnings: enabled"
-        println "Outputs:"
-        println "  build/libs/MinecraftAgent-${version}.jar  (Bukkit plugin)"
-        println "  build/libs/McpBridge-${version}.jar       (MCP standalone)"
-        println "-" * 40
-    }
-}
-
-tasks.register('cleanBuild') {
-    group = 'build'
-    description = 'Clean build with all quality checks'
-    dependsOn 'clean', 'qualityCheck'
 }

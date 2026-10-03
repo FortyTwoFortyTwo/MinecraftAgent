@@ -9,12 +9,16 @@ import org.apache.logging.log4j.core.config.Configuration;
 import java.util.ArrayList;
 import java.util.List;
 
+/** Collects everything logged until end() is called, which must always happen, e.g. in a finally block */
 public class CaptureLogsAppender extends AbstractAppender {
-    List<String> output = new ArrayList<>();
+
+    private static final String NAME = "CaptureAppender";
+
+    private final List<String> output = new ArrayList<>();
 
     @SuppressWarnings("this-escape")
     public CaptureLogsAppender() {
-        super("CaptureAppender", null, null, true, null);
+        super(NAME, null, null, true, null);
 
         start();
 
@@ -32,11 +36,11 @@ public class CaptureLogsAppender extends AbstractAppender {
     }
 
     public void end() {
-        // Remove appender
         LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
         Configuration config = ctx.getConfiguration();
-        config.getRootLogger().removeAppender("CaptureAppender");
+        config.getRootLogger().removeAppender(NAME);
         ctx.updateLoggers(config);
+        stop();
     }
 
     public List<String> getOutput() {

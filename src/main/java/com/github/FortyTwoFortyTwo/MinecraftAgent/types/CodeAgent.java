@@ -1,10 +1,9 @@
 package com.github.FortyTwoFortyTwo.MinecraftAgent.types;
 
+import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.AgentProgress;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.ClaudeCode;
-import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.util.StringUtil;
@@ -57,17 +56,9 @@ public class CodeAgent implements AgentType {
             return;
         }
 
-        Bukkit.getScheduler().runTaskAsynchronously(MinecraftTools.plugin, () -> {
-
-            ClaudeCode claude = new ClaudeCode(directory.toString(), sender, "Read,Edit,Write,Glob,Grep", null, false, true);
-
-            String message = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
-
-            try {
-                claude.run(message, progress);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        });
+        new ClaudeCode(directory.toString(), sender)
+                .builtInTools("Read,Edit,Write,Glob,Grep")
+                .forwardOutput()
+                .runAsync(String.join(" ", Arrays.copyOfRange(args, 1, args.length)), progress);
     }
 }

@@ -1,5 +1,5 @@
 name: MinecraftAgent
-version: '1.0-SNAPSHOT'
+version: '${version}'
 main: com.github.FortyTwoFortyTwo.MinecraftAgent.MinecraftAgent
 api-version: '26.3'
 load: STARTUP

@@ -48,12 +48,12 @@ The `/agent api <prompt>` command lets you send prompts to the AI agent directly
 It communicates with the Anthropic API (`https://api.anthropic.com/v1/messages`), passing the available tools and receiving actions to execute in-game.
 
 All text responses from the agent are printed in chat.
-The final response is formatted in Minecraft style (colours, bold, strikethrough, etc.), while intermediate messages during processing are shown in plain white text due to limitations on Anthropic.
+The agent formats them with MiniMessage tags (colours, bold, strikethrough, etc.), limited to styling so a response can't add click events.
 
 ### `/agent code` via [Claude Code](https://github.com/FortyTwoFortyTwo/MinecraftAgent/blob/main/src/main/java/com/github/FortyTwoFortyTwo/MinecraftAgent/agent/ClaudeCode.java)
 
 The `/agent code <directory> <prompt>` command works similarly to `/agent api`, but instead of calling the Anthropic API over HTTP, it runs the `claude` CLI directly.
-It uses `--output-format text` to get plain text output without a GUI.
+It runs headless with `--output-format stream-json`, following each turn and tool call as it happens, and only the final result is sent to chat.
 
 This mode does not have access to Minecraft-specific tools.
 It only has `--tools Read,Edit,Write,Glob,Grep` for file editing purposes, so Bash, web access and every other built-in tool don't exist for it.

@@ -1,10 +1,12 @@
 package com.github.FortyTwoFortyTwo.MinecraftAgent.agent;
 
-import com.github.FortyTwoFortyTwo.MinecraftAgent.types.AgentProgress;
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 
@@ -13,19 +15,25 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-/** Runs the Claude Code CLI headless, billed to the logged in Claude subscription */
+/**
+ * Runs the Claude Code CLI headless for a single prompt, billed to the logged in Claude subscription.
+ * By default it has no tools and its output is only logged to the console.
+ */
 public class ClaudeCode {
+
+    private static final int TIMEOUT_SECONDS = 300;
 
     private final String workingDirectory;
     private final CommandSender sender;
-    private final String builtInTools;
-    private final String systemPrompt;
-    private final boolean minecraftTools;
-    private final boolean forwardOutput;
-    // Set for each run, as the output reader reports to it from its own thread
-    private AgentProgress progress = AgentProgress.NONE;
+    private String builtInTools = "";
+    private String systemPrompt;
+    private boolean minecraftTools;
+    private boolean forwardOutput;
 
+    private AgentProgress progress = AgentProgress.NONE;
     // Assistant messages are streamed one content block at a time, so a turn is counted per message id
     private final Set<String> turns = new HashSet<>();
     private int maxTurns;
@@ -34,30 +42,67 @@ public class ClaudeCode {
     private MinecraftMcpServer mcpServer;
     private File mcpConfigFile;
 
-    /**
-     * @param builtInTools   comma separated Claude Code tools to make available, or "" for none
-     * @param systemPrompt   appended to Claude Code's system prompt, or null
-     * @param minecraftTools whether to run an MCP server for this run offering the Minecraft tools
-     * @param forwardOutput  whether Claude Code's final result is sent to the sender, otherwise it's only logged to the console
-     */
-    public ClaudeCode(String workingDirectory, CommandSender sender, String builtInTools, String systemPrompt, boolean minecraftTools, boolean forwardOutput) {
+    public ClaudeCode(String workingDirectory, CommandSender sender) {
         this.workingDirectory = workingDirectory;
         this.sender = sender;
-        this.builtInTools = builtInTools;
-        this.systemPrompt = systemPrompt;
-        this.minecraftTools = minecraftTools;
-        this.forwardOutput = forwardOutput;
     }
 
-    /** Runs the prompt, blocking until it ends or is stopped after 300 seconds, so call off the main thread. Progress is told about each turn and tool call, and when the run ends. */
+    /** Comma separated Claude Code tools to make available, every other built-in tool doesn't exist */
+    public ClaudeCode builtInTools(String builtInTools) {
+        this.builtInTools = builtInTools;
+        return this;
+    }
+
+    /** Appended to Claude Code's system prompt */
+    public ClaudeCode systemPrompt(String systemPrompt) {
+        this.systemPrompt = systemPrompt;
+        return this;
+    }
+
+    /** Runs an MCP server for this run offering the Minecraft tools */
+    public ClaudeCode minecraftTools() {
+        this.minecraftTools = true;
+        return this;
+    }
+
+    /** Sends Claude Code's final result to the sender, not just the console */
+    public ClaudeCode forwardOutput() {
+        this.forwardOutput = true;
+        return this;
+    }
+
+    /** Runs the prompt off the main thread, telling progress about each turn and tool call, and when the run ends */
+    public void runAsync(String prompt, AgentProgress progress) {
+        Bukkit.getScheduler().runTaskAsynchronously(MinecraftTools.plugin, () -> {
+            try {
+                run(prompt, progress);
+            } catch (Exception e) {
+                logger().log(Level.WARNING, "Claude Code run failed", e);
+                sender.sendMessage(Component.text("Claude Code failed: " + e, NamedTextColor.RED));
+            }
+        });
+    }
+
+    /** Runs the prompt, blocking until it ends or is stopped after the timeout */
     public void run(String prompt, AgentProgress progress) throws IOException, InterruptedException {
         this.progress = progress;
         try {
             start(prompt);
 
-            if (!process.waitFor(300, TimeUnit.SECONDS))
-                stop();
+            // Stopping the process closes its output, which ends readOutput
+            Thread watchdog = Thread.ofPlatform().daemon().name("claude-watchdog").start(() -> {
+                try {
+                    if (!process.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS))
+                        stop();
+                } catch (InterruptedException ignored) {
+                }
+            });
+
+            readOutput();
+            logger().info("[Claude] process exited with code: " + process.waitFor());
+            watchdog.interrupt();
         } finally {
+            cleanup();
             progress.finish();
         }
     }
@@ -114,28 +159,8 @@ public class ClaudeCode {
         if (!oauthToken.isBlank())
             env.put("CLAUDE_CODE_OAUTH_TOKEN", oauthToken);
 
-        try {
-            process = pb.start();
-        } catch (IOException e) {
-            cleanup();
-            throw e;
-        }
+        process = pb.start();
         process.getOutputStream().close();  // nothing to send on stdin, otherwise the CLI waits for it
-
-        // DEBUG: print exit code after a short wait
-        new Thread(() -> {
-            try {
-                int code = process.waitFor();
-                System.out.println("[Claude] process exited with code: " + code);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-
-            cleanup();
-        }, "claude-exit-watcher").start();
-
-        // Stream output in background thread
-        new Thread(this::readOutput, "claude-output-reader").start();
     }
 
     /**
@@ -192,26 +217,20 @@ public class ClaudeCode {
 
         // Contains the run's secret, so keep it in the plugin folder rather than in a shared temp directory
         mcpConfigFile = new File(MinecraftTools.plugin.getDataFolder(), "claude-mcp-" + UUID.randomUUID() + ".json");
-        try {
-            Files.writeString(mcpConfigFile.toPath(), MinecraftTools.GSON.toJson(root), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            cleanup();
-            throw e;
-        }
+        Files.writeString(mcpConfigFile.toPath(), MinecraftTools.GSON.toJson(root), StandardCharsets.UTF_8);
         return mcpConfigFile;
     }
 
-    public void readOutput() {
-        System.out.println("[Claude] output reader started");
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(process.getInputStream()))) {
+    /** Follows the process output until it ends */
+    private void readOutput() {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 JsonObject event = parseEvent(line);
 
                 // Anything that isn't an event, such as an error on stderr, is shown as is
                 if (event == null) {
-                    System.out.println("[Claude] " + line);
+                    logger().info("[Claude] " + line);
                     if (forwardOutput)
                         sender.sendMessage(line);
                 } else {
@@ -219,9 +238,8 @@ public class ClaudeCode {
                 }
             }
         } catch (IOException e) {
-            System.out.println("[Claude] IOException: " + e);
+            logger().log(Level.WARNING, "[Claude] Failed to read output", e);
         }
-        System.out.println("[Claude] output reader finished");
     }
 
     private static JsonObject parseEvent(String line) {
@@ -247,11 +265,11 @@ public class ClaudeCode {
                 for (JsonElement element : message.getAsJsonArray("content")) {
                     JsonObject block = element.getAsJsonObject();
                     switch (block.get("type").getAsString()) {
-                        case "text" -> System.out.println("[Claude] " + block.get("text").getAsString());
+                        case "text" -> logger().info("[Claude] " + block.get("text").getAsString());
                         case "tool_use" -> {
                             // Minecraft tools are named mcp__minecraft__<tool>, only the tool is worth showing
                             status = "Using " + block.get("name").getAsString().replace("mcp__minecraft__", "");
-                            System.out.println("[Claude] " + status + " " + block.get("input"));
+                            logger().info("[Claude] " + status + " " + block.get("input"));
                         }
                     }
                 }
@@ -262,7 +280,7 @@ public class ClaudeCode {
                 // Only the final result is forwarded, same as the plain text output format
                 String result = event.has("result") ? event.get("result").getAsString() : "Claude Code ended: " + event.get("subtype").getAsString();
                 for (String line : result.split("\n")) {
-                    System.out.println("[Claude] " + line);
+                    logger().info("[Claude] " + line);
                     if (forwardOutput)
                         sender.sendMessage(line);
                 }
@@ -270,10 +288,10 @@ public class ClaudeCode {
         }
     }
 
-    public void stop() {
+    private void stop() {
         if (process != null && process.isAlive()) {
             process.destroy();
-            System.out.println("[INFO] Claude Code stopped.");
+            logger().info("[Claude] Stopped after " + TIMEOUT_SECONDS + " seconds.");
         }
     }
 
@@ -284,5 +302,9 @@ public class ClaudeCode {
 
         if (mcpConfigFile != null)
             mcpConfigFile.delete();
+    }
+
+    private static Logger logger() {
+        return MinecraftTools.plugin.getLogger();
     }
 }

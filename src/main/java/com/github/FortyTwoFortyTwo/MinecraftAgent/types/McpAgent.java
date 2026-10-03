@@ -1,8 +1,8 @@
 package com.github.FortyTwoFortyTwo.MinecraftAgent.types;
 
+import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.AgentProgress;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.ClaudeCode;
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
-import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 
 /** Same as api, but runs through Claude Code connected to a Minecraft tools MCP server, so it can be billed to a Claude subscription */
@@ -28,18 +28,10 @@ public class McpAgent implements AgentType {
 
     @Override
     public void run(CommandSender sender, String[] args, AgentProgress progress) {
-        Bukkit.getScheduler().runTaskAsynchronously(MinecraftTools.plugin, () -> {
-
-            // Only the Minecraft tools, the same set api gets, with none of Claude Code's built-in tools
-            ClaudeCode claude = new ClaudeCode(MinecraftTools.plugin.getDataFolder().getAbsolutePath(), sender, "", MCP_SYSTEM_PROMPT, true, false);
-
-            String message = String.join(" ", args);
-
-            try {
-                claude.run(message, progress);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        });
+        // Only the Minecraft tools, the same set api gets, with none of Claude Code's built-in tools
+        new ClaudeCode(MinecraftTools.plugin.getDataFolder().getAbsolutePath(), sender)
+                .systemPrompt(MCP_SYSTEM_PROMPT)
+                .minecraftTools()
+                .runAsync(String.join(" ", args), progress);
     }
 }

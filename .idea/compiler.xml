@@ -4,6 +4,6 @@
     <bytecodeTargetLevel target="25" />
   </component>
   <component name="JavacSettings">
-    <option name="ADDITIONAL_OPTIONS_STRING" value="-Xlint:all -Xlint:-processing -Xlint:-serial -Xlint:-this-escape -Xlint:unchecked -Xlint:cast -Xlint:deprecation -Xlint:divzero -Xlint:empty -Xlint:fallthrough -Xlint:finally -Xlint:overrides -Xlint:path -Xlint:rawtypes -Xlint:static -Xlint:try" />
+    <option name="ADDITIONAL_OPTIONS_STRING" value="-Xlint:all -Xlint:-processing -Xlint:-serial -Xlint:-this-escape" />
   </component>
 </project>

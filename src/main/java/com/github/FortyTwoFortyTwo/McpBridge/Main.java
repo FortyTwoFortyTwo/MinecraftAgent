@@ -2,6 +2,7 @@ package com.github.FortyTwoFortyTwo.McpBridge;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.FortyTwoFortyTwo.Shared.MinecraftBridgeClient;
+import com.github.FortyTwoFortyTwo.Shared.MinecraftTool;
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import com.google.gson.JsonObject;
 import io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper;
@@ -33,7 +34,7 @@ public class Main {
 
         List<McpServerFeatures.SyncToolSpecification> tools = new ArrayList<>();
 
-        for (com.github.FortyTwoFortyTwo.Shared.MinecraftTool minecraftTool : MinecraftTools.list) {
+        for (MinecraftTool minecraftTool : MinecraftTools.list) {
             // Build the Tool
             Tool tool = Tool.builder()
                     .name(minecraftTool.getName())

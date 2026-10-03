@@ -2,24 +2,24 @@ package com.github.FortyTwoFortyTwo.MinecraftAgent.agent;
 
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTool;
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
-import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
-import org.bukkit.plugin.java.JavaPlugin;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.Serializable;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.Executors;
 
+/** Serves each Minecraft tool on its own path for McpBridge to forward calls to */
 public class BridgeHttpServer {
 
     private final int port;
     private final String secret;
     private HttpServer server;
-    private final Gson gson = new Gson();
 
     public BridgeHttpServer(int port, String secret) {
         this.port = port;
@@ -42,56 +42,33 @@ public class BridgeHttpServer {
         if (server != null) server.stop(0);
     }
 
-    // -------------------------------------------------------------------------
-    // Tool handler
-    // -------------------------------------------------------------------------
-
     private void handle(HttpExchange exchange) throws IOException {
-
-        // Reject requests addressed to any other host name, blocking DNS rebinding from browser pages
-        String host = exchange.getRequestHeaders().getFirst("Host");
-        if (host == null || !(host.equalsIgnoreCase("127.0.0.1:" + port) || host.equalsIgnoreCase("localhost:" + port))) {
+        if (!MinecraftTools.isLocalHost(exchange, port)) {
             MinecraftTools.sendJson(exchange, 403, Map.of("error", "Invalid Host header"));
             return;
         }
 
         String path = exchange.getRequestURI().getPath();
-
-        for (MinecraftTool tool : MinecraftTools.list) {
-            if (!tool.getPath().equals(path))
-                continue;
-
-            if (!tool.isAuthorized(exchange, secret)) {
-                MinecraftTools.sendJson(exchange, 403, Map.of("error", "Unauthorized"));
-                return;
-            }
-
-            // Same as MinecraftMcpServer, a failing tool is reported back rather than dropping the connection
-            Map<String, Serializable> result;
-            try {
-                result = tool.execute(readBody(exchange).getAsJsonObject("arguments"));
-            } catch (Exception e) {
-                result = Map.of("error", String.valueOf(e));
-            }
-
-            if (result.containsKey("error"))
-                MinecraftTools.sendJson(exchange, 400, result);
-            else
-                MinecraftTools.sendJson(exchange, 200, result);
-
+        Optional<MinecraftTool> found = MinecraftTools.list.stream().filter(tool -> tool.getPath().equals(path)).findFirst();
+        if (found.isEmpty()) {
+            MinecraftTools.sendJson(exchange, 404, Map.of("error", "Unknown path " + path));
             return;
         }
 
-        MinecraftTools.sendJson(exchange, 404, Map.of("error", "Unknown path " + path));
+        MinecraftTool tool = found.get();
+        if (!tool.isAuthorized(exchange, secret)) {
+            MinecraftTools.sendJson(exchange, 403, Map.of("error", "Unauthorized"));
+            return;
+        }
+
+        JsonObject arguments = readBody(exchange).getAsJsonObject("arguments");
+        Map<String, Serializable> result = tool.safeExecute(arguments != null ? arguments : new JsonObject());
+        MinecraftTools.sendJson(exchange, result.containsKey("error") ? 400 : 200, result);
     }
 
-    // -------------------------------------------------------------------------
-    // Utilities
-    // -------------------------------------------------------------------------
-
-    private JsonObject readBody(HttpExchange exchange) throws IOException {
+    private static JsonObject readBody(HttpExchange exchange) throws IOException {
         String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         if (body.isEmpty()) return new JsonObject();
-        return gson.fromJson(body, JsonObject.class);
+        return MinecraftTools.GSON.fromJson(body, JsonObject.class);
     }
 }

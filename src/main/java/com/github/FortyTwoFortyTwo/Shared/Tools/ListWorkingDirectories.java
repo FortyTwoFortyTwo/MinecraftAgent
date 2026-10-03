@@ -1,6 +1,7 @@
 package com.github.FortyTwoFortyTwo.Shared.Tools;
 
-import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
+import com.github.FortyTwoFortyTwo.Shared.MinecraftTool;
+import com.github.FortyTwoFortyTwo.Shared.WorkingDirectories;
 import com.google.gson.JsonObject;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.eclipse.jgit.ignore.FastIgnoreRule;
@@ -15,28 +16,32 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 
-public class ListWorkingDirectories implements com.github.FortyTwoFortyTwo.Shared.MinecraftTool {
+public class ListWorkingDirectories implements MinecraftTool {
 
+    @Override
     public String getDescription() {
         return "Lists all available working directories and their top-level contents. Optional path to search for, e.g. 'config.json' or 'src/Main.java'";
     }
 
+    @Override
     public McpSchema.JsonSchema getInputSchema() {
-        return objectSchema(Map.of("path", stringSchema()));
+        return objectSchema(Map.of(), Map.of("path", stringSchema()));
     }
 
-    public Map<String, Serializable> execute(JsonObject input) {
+    @Override
+    public Map<String, Serializable> execute(JsonObject input) throws IOException {
         String subPath = input.has("path") ? input.get("path").getAsString() : "";
 
         StringBuilder sb = new StringBuilder();
 
-        for (String dir : MinecraftTools.plugin.getConfig().getStringList("directories")) {
-            Path path = Path.of(dir);
-            Path target = !subPath.isEmpty() ? path.resolve(subPath) : path;
+        for (Path path : WorkingDirectories.list()) {
+            Path target = path.resolve(subPath);
             Map<Path, List<FastIgnoreRule>> gitignoreMap = loadAllGitignores(path);
 
-            sb.append("📁 ").append(dir).append("\n");
-            if (target.toFile().exists()) {
+            sb.append("📁 ").append(path).append("\n");
+            if (!WorkingDirectories.contains(path, target)) {
+                sb.append("  (path is outside of this working directory)\n");
+            } else if (target.toFile().exists()) {
                 listContents(target, path, gitignoreMap, sb, "  ", 2);
             } else {
                 sb.append("  (path not found)\n");

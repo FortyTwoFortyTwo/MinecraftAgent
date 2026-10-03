@@ -1,6 +1,6 @@
-package com.github.FortyTwoFortyTwo.MinecraftAgent.vote;
+package com.github.FortyTwoFortyTwo.MinecraftAgent.bossbar;
 
-import com.github.FortyTwoFortyTwo.MinecraftAgent.types.AgentProgress;
+import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.AgentProgress;
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;

@@ -15,16 +15,27 @@ import org.bukkit.configuration.file.FileConfiguration;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class ErrorCatcherAppender extends AbstractAppender {
+
+    // How many distinct errors are remembered to skip repeats, forgetting the oldest after that
+    private static final int MAX_PREVIOUS = 256;
 
     private final AnthropicClient anthropic;
     private final List<MinecraftTool> tools;
     private final int maxRunsPerHour;
-    private final List<String> previous = new ArrayList<>();
+    private final Set<String> previous = Collections.newSetFromMap(new LinkedHashMap<>() {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, Boolean> eldest) {
+            return size() > MAX_PREVIOUS;
+        }
+    });
     private final Deque<Long> recentRuns = new ArrayDeque<>();
 
     public ErrorCatcherAppender(AnthropicClient anthropic, FileConfiguration config) {
@@ -41,22 +52,15 @@ public class ErrorCatcherAppender extends AbstractAppender {
         if (!event.getLevel().isMoreSpecificThan(Level.ERROR))
             return;
 
-        String message = event.getMessage().getFormattedMessage();
         Throwable thrown = event.getThrown();
         if (thrown == null)
             return;
 
-        // Get just the message and first line of the trace to detect if its a dupe
+        // The exception and where it was thrown is enough to tell if it's a repeat
         StackTraceElement[] trace = thrown.getStackTrace();
-        StringBuilder sb = new StringBuilder(thrown.toString()).append("\n");
-        for (int i = 0; i < Math.min(1, trace.length); i++)
-            sb.append("  at ").append(trace[i]).append("\n");
-
-        String result = sb.toString();
-        if (previous.contains(result))
+        String key = thrown + (trace.length > 0 ? "\n  at " + trace[0] : "");
+        if (!previous.add(key))
             return;
-
-        previous.add(result);
 
         // Limit how many runs errors can trigger, so a flood of distinct errors can't drain the API budget
         long now = System.currentTimeMillis();
@@ -71,12 +75,12 @@ public class ErrorCatcherAppender extends AbstractAppender {
         Bukkit.broadcast(Component.text("Error detected! sending to Agent...", NamedTextColor.RED));
 
         // Replies go to console only, never to player chat
-        anthropic.sendMessage(Bukkit.getConsoleSender(), message + "\n" + getStackTrace(thrown),
+        anthropic.sendMessage(Bukkit.getConsoleSender(), event.getMessage().getFormattedMessage() + "\n" + getStackTrace(thrown),
                 "You are an AI agent, you will be given an error stack trace, do the best of your ability to edit files at working directory to fix given errors.",
                 tools);
     }
 
-    public static String getStackTrace(Throwable t) {
+    private static String getStackTrace(Throwable t) {
         StringWriter sw = new StringWriter();
         t.printStackTrace(new PrintWriter(sw));
         return sw.toString();
