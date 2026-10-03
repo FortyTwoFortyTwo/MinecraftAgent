@@ -2,6 +2,7 @@ package com.github.FortyTwoFortyTwo.MinecraftAgent.agent;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.FortyTwoFortyTwo.MinecraftAgent.types.AgentProgress;
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTool;
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import com.google.gson.JsonArray;
@@ -43,6 +44,11 @@ public class AnthropicClient {
 
     /** Runs a prompt, only offering and allowing the given tools */
     public void sendMessage(CommandSender sender, String userMessage, String system, List<MinecraftTool> tools) {
+        sendMessage(sender, userMessage, system, tools, AgentProgress.NONE);
+    }
+
+    /** Same as above, reporting each turn and tool call to progress */
+    public void sendMessage(CommandSender sender, String userMessage, String system, List<MinecraftTool> tools, AgentProgress progress) {
         List<JsonObject> messages = new ArrayList<>();
 
         JsonObject userMsg = new JsonObject();
@@ -52,14 +58,16 @@ public class AnthropicClient {
 
         Bukkit.getScheduler().runTaskAsynchronously(MinecraftTools.plugin, () -> {
             try {
-                run(sender, messages, system, tools);
+                run(sender, messages, system, tools, progress);
             } catch (IOException e) {
                 throw new RuntimeException(e);
+            } finally {
+                progress.finish();
             }
         });
     }
 
-    private void run(CommandSender sender, List<JsonObject> messages, String system, List<MinecraftTool> tools) throws IOException {
+    private void run(CommandSender sender, List<JsonObject> messages, String system, List<MinecraftTool> tools, AgentProgress progress) throws IOException {
         int totalTokensUsed = 0;
 
         for (int turn = 0; turn < maxTurns; turn++) {
@@ -68,6 +76,7 @@ public class AnthropicClient {
                 return;
             }
 
+            progress.step(turn + 1, maxTurns, "Thinking");
             JsonObject response = doRequest(messages, system, tools);
 
             if (response.get("type").getAsString().equals("error")) {
@@ -111,6 +120,7 @@ public class AnthropicClient {
                         String toolUseId = block.get("id").getAsString();
                         JsonObject input = block.getAsJsonObject("input");
                         input.addProperty("sender", sender.getName());
+                        progress.step(turn + 1, maxTurns, "Using " + toolName);
 
                         // Call the actual tool on the Bukkit bridge
                         JsonElement toolResult = callTool(tools, toolName, input);

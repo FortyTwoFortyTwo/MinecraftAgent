@@ -1,7 +1,10 @@
 package com.github.FortyTwoFortyTwo.MinecraftAgent.agent;
 
+import com.github.FortyTwoFortyTwo.MinecraftAgent.types.AgentProgress;
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 
@@ -9,6 +12,7 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 /** Runs the Claude Code CLI headless, billed to the logged in Claude subscription */
 public class ClaudeCode {
@@ -19,6 +23,12 @@ public class ClaudeCode {
     private final String systemPrompt;
     private final boolean minecraftTools;
     private final boolean forwardOutput;
+    // Set for each run, as the output reader reports to it from its own thread
+    private AgentProgress progress = AgentProgress.NONE;
+
+    // Assistant messages are streamed one content block at a time, so a turn is counted per message id
+    private final Set<String> turns = new HashSet<>();
+    private int maxTurns;
 
     private Process process;
     private MinecraftMcpServer mcpServer;
@@ -28,7 +38,7 @@ public class ClaudeCode {
      * @param builtInTools   comma separated Claude Code tools to make available, or "" for none
      * @param systemPrompt   appended to Claude Code's system prompt, or null
      * @param minecraftTools whether to run an MCP server for this run offering the Minecraft tools
-     * @param forwardOutput  whether Claude Code's text output is sent to the sender, otherwise it's only logged to the console
+     * @param forwardOutput  whether Claude Code's final result is sent to the sender, otherwise it's only logged to the console
      */
     public ClaudeCode(String workingDirectory, CommandSender sender, String builtInTools, String systemPrompt, boolean minecraftTools, boolean forwardOutput) {
         this.workingDirectory = workingDirectory;
@@ -39,23 +49,29 @@ public class ClaudeCode {
         this.forwardOutput = forwardOutput;
     }
 
-    /** Runs the prompt, blocking until it's stopped after 300 seconds, so call off the main thread */
-    public void run(String prompt) throws IOException, InterruptedException {
-        start(prompt);
+    /** Runs the prompt, blocking until it ends or is stopped after 300 seconds, so call off the main thread. Progress is told about each turn and tool call, and when the run ends. */
+    public void run(String prompt, AgentProgress progress) throws IOException, InterruptedException {
+        this.progress = progress;
+        try {
+            start(prompt);
 
-        // Keep running for 300 seconds then stop
-        Thread.sleep(300_000);
-        stop();
+            if (!process.waitFor(300, TimeUnit.SECONDS))
+                stop();
+        } finally {
+            progress.finish();
+        }
     }
 
-    public void start(String prompt) throws IOException {
+    private void start(String prompt) throws IOException {
         FileConfiguration config = MinecraftTools.plugin.getConfig();
+        maxTurns = config.getInt("claude-code.max-turns");
 
         List<String> cmd = new ArrayList<>(List.of(
                 findExecutable(config),
-                "--print",                  // headless mode: output result to stdout
-                "--output-format", "text",  // plain text output (or "json" for structured)
-                "--max-turns", String.valueOf(config.getInt("claude-code.max-turns")),
+                "--print",                          // headless mode: output result to stdout
+                "--output-format", "stream-json",   // one JSON event per line, so each turn and tool call can be followed
+                "--verbose",                        // required by stream-json in headless mode
+                "--max-turns", String.valueOf(maxTurns),
                 "--tools", builtInTools     // every other built-in tool doesn't exist, even if the user's Claude settings allow it
         ));
 
@@ -191,14 +207,67 @@ public class ClaudeCode {
                 new InputStreamReader(process.getInputStream()))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                System.out.println("[Claude] " + line);
-                if (forwardOutput)
-                    sender.sendMessage(line);
+                JsonObject event = parseEvent(line);
+
+                // Anything that isn't an event, such as an error on stderr, is shown as is
+                if (event == null) {
+                    System.out.println("[Claude] " + line);
+                    if (forwardOutput)
+                        sender.sendMessage(line);
+                } else {
+                    handleEvent(event);
+                }
             }
         } catch (IOException e) {
             System.out.println("[Claude] IOException: " + e);
         }
         System.out.println("[Claude] output reader finished");
+    }
+
+    private static JsonObject parseEvent(String line) {
+        try {
+            JsonElement element = MinecraftTools.GSON.fromJson(line, JsonElement.class);
+            return element != null && element.isJsonObject() && element.getAsJsonObject().has("type") ? element.getAsJsonObject() : null;
+        } catch (JsonParseException e) {
+            return null;
+        }
+    }
+
+    private void handleEvent(JsonObject event) {
+        switch (event.get("type").getAsString()) {
+            case "assistant" -> {
+                JsonObject message = event.getAsJsonObject("message");
+                if (message == null)
+                    return;
+
+                if (message.has("id"))
+                    turns.add(message.get("id").getAsString());
+
+                String status = "Thinking";
+                for (JsonElement element : message.getAsJsonArray("content")) {
+                    JsonObject block = element.getAsJsonObject();
+                    switch (block.get("type").getAsString()) {
+                        case "text" -> System.out.println("[Claude] " + block.get("text").getAsString());
+                        case "tool_use" -> {
+                            // Minecraft tools are named mcp__minecraft__<tool>, only the tool is worth showing
+                            status = "Using " + block.get("name").getAsString().replace("mcp__minecraft__", "");
+                            System.out.println("[Claude] " + status + " " + block.get("input"));
+                        }
+                    }
+                }
+
+                progress.step(turns.size(), maxTurns, status);
+            }
+            case "result" -> {
+                // Only the final result is forwarded, same as the plain text output format
+                String result = event.has("result") ? event.get("result").getAsString() : "Claude Code ended: " + event.get("subtype").getAsString();
+                for (String line : result.split("\n")) {
+                    System.out.println("[Claude] " + line);
+                    if (forwardOutput)
+                        sender.sendMessage(line);
+                }
+            }
+        }
     }
 
     public void stop() {

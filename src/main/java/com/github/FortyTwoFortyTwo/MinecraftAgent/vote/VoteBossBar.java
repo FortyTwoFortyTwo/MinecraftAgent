@@ -8,15 +8,17 @@ import org.bukkit.scheduler.BukkitTask;
 
 import java.util.function.IntFunction;
 
-/** Boss bar shown to everyone that counts down the time left in the current prompt vote phase */
-public class VoteBossBar {
-
-    private final BossBar bar = BossBar.bossBar(Component.empty(), 1f, BossBar.Color.YELLOW, BossBar.Overlay.PROGRESS);
+/** Counts down the time left in the current prompt vote phase */
+public class VoteBossBar extends BroadcastBossBar {
 
     private BukkitTask task;
     private IntFunction<Component> title;
     private int total;
     private int remaining;
+
+    public VoteBossBar() {
+        super(BossBar.Color.YELLOW);
+    }
 
     /** Starts counting down from the given seconds, replacing any countdown already running. The title is given the seconds left. */
     public void start(int seconds, BossBar.Color color, IntFunction<Component> title) {
@@ -26,7 +28,7 @@ public class VoteBossBar {
         this.title = title;
         total = Math.max(seconds, 1);
         remaining = seconds;
-        bar.color(color);
+        color(color);
         update();
 
         task = Bukkit.getScheduler().runTaskTimer(MinecraftTools.plugin, () -> {
@@ -37,14 +39,8 @@ public class VoteBossBar {
 
     /** Refreshes the title and progress, e.g. after a submission or vote changes what the title shows */
     public void update() {
-        if (title == null)
-            return;
-
-        bar.name(title.apply(remaining));
-        bar.progress((float) remaining / total);
-
-        // Shown again every update so players who joined mid-countdown see it too
-        Bukkit.getServer().showBossBar(bar);
+        if (title != null)
+            show(title.apply(remaining), (float) remaining / total);
     }
 
     public void stop() {
@@ -53,6 +49,6 @@ public class VoteBossBar {
 
         task = null;
         title = null;
-        Bukkit.getServer().hideBossBar(bar);
+        hide();
     }
 }

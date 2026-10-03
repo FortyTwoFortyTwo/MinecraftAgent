@@ -38,6 +38,8 @@ public class PromptVote {
     private final Map<UUID, Integer> votes = new HashMap<>();
     private final Random random = new Random();
     private final VoteBossBar bossBar = new VoteBossBar();
+    // One per winning prompt still running, as the next round can finish before the last agent does
+    private final Set<AgentBossBar> agentBars = new HashSet<>();
 
     private Phase phase = Phase.IDLE;
     private BukkitTask timer;
@@ -63,6 +65,9 @@ public class PromptVote {
 
         timer = null;
         reset();
+
+        agentBars.forEach(AgentBossBar::hide);
+        agentBars.clear();
     }
 
     /** Starts a round, unless one is already running or there aren't enough players */
@@ -272,7 +277,11 @@ public class PromptVote {
         List<String> args = new ArrayList<>(Arrays.asList(command).subList(1, command.length));
         args.addAll(Arrays.asList(winner.prompt().split(" ")));
 
-        type.run(broadcastingSender(player), args.toArray(String[]::new));
+        AgentBossBar agentBar = new AgentBossBar(winner.displayName(), agentBars::remove);
+        agentBars.add(agentBar);
+        agentBar.start();
+
+        type.run(broadcastingSender(player), args.toArray(String[]::new), agentBar);
     }
 
     /** Acts as the given player, except every message sent to it goes to the whole server so everyone sees what their vote did */

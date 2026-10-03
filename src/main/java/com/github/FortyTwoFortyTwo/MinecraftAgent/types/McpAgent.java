@@ -27,7 +27,7 @@ public class McpAgent implements AgentType {
     }
 
     @Override
-    public void run(CommandSender sender, String[] args) {
+    public void run(CommandSender sender, String[] args, AgentProgress progress) {
         Bukkit.getScheduler().runTaskAsynchronously(MinecraftTools.plugin, () -> {
 
             // Only the Minecraft tools, the same set api gets, with none of Claude Code's built-in tools
@@ -36,7 +36,7 @@ public class McpAgent implements AgentType {
             String message = String.join(" ", args);
 
             try {
-                claude.run(message);
+                claude.run(message, progress);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }

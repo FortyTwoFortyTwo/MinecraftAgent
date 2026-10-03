@@ -24,8 +24,8 @@ public class ApiAgent implements AgentType {
     }
 
     @Override
-    public void run(CommandSender sender, String[] args) {
+    public void run(CommandSender sender, String[] args, AgentProgress progress) {
         String message = String.join(" ", args);
-        anthropic.sendMessage(sender, message, SYSTEM_PROMPT, MinecraftTools.list);
+        anthropic.sendMessage(sender, message, SYSTEM_PROMPT, MinecraftTools.list, progress);
     }
 }

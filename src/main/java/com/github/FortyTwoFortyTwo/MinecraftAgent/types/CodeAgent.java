@@ -42,9 +42,10 @@ public class CodeAgent implements AgentType {
     }
 
     @Override
-    public void run(CommandSender sender, String[] args) {
+    public void run(CommandSender sender, String[] args, AgentProgress progress) {
         if (args.length < 2) {
             sender.sendMessage(Component.text("Usage: /agent code " + usage(), NamedTextColor.RED));
+            progress.finish();
             return;
         }
 
@@ -52,6 +53,7 @@ public class CodeAgent implements AgentType {
         Path directory = Path.of(args[0]).toAbsolutePath().normalize();
         if (paths.stream().noneMatch(path -> Path.of(path).toAbsolutePath().normalize().equals(directory))) {
             sender.sendMessage(Component.text("Directory must be one of: " + String.join(", ", paths), NamedTextColor.RED));
+            progress.finish();
             return;
         }
 
@@ -62,7 +64,7 @@ public class CodeAgent implements AgentType {
             String message = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
 
             try {
-                claude.run(message);
+                claude.run(message, progress);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }

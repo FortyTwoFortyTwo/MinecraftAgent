@@ -17,8 +17,8 @@ public interface AgentType {
     /** Arguments shown in the usage message after /agent <type> */
     String usage();
 
-    /** Runs the type, with args being everything after the type name */
-    void run(CommandSender sender, String[] args);
+    /** Runs the type, with args being everything after the type name. Must always end with progress.finish(), even if it never starts. */
+    void run(CommandSender sender, String[] args, AgentProgress progress);
 
     default List<String> tabComplete(String[] args) {
         return List.of();

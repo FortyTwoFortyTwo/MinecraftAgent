@@ -1,6 +1,7 @@
 package com.github.FortyTwoFortyTwo.MinecraftAgent.commands;
 
 import com.github.FortyTwoFortyTwo.MinecraftAgent.MinecraftAgent;
+import com.github.FortyTwoFortyTwo.MinecraftAgent.types.AgentProgress;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.types.AgentType;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -46,7 +47,7 @@ public class AgentCommand extends BukkitCommand {
             return true;
         }
 
-        type.run(sender, Arrays.copyOfRange(args, 1, args.length));
+        type.run(sender, Arrays.copyOfRange(args, 1, args.length), AgentProgress.NONE);
         return true;
     }
 }
