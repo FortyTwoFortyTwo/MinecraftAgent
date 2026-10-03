@@ -2,6 +2,8 @@ package com.github.FortyTwoFortyTwo.MinecraftAgent.types;
 
 import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.ClaudeCode;
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -42,14 +44,14 @@ public class CodeAgent implements AgentType {
     @Override
     public void run(CommandSender sender, String[] args) {
         if (args.length < 2) {
-            sender.sendMessage("§cUsage: /agent code " + usage());
+            sender.sendMessage(Component.text("Usage: /agent code " + usage(), NamedTextColor.RED));
             return;
         }
 
         // Only allow directories listed in config
         Path directory = Path.of(args[0]).toAbsolutePath().normalize();
         if (paths.stream().noneMatch(path -> Path.of(path).toAbsolutePath().normalize().equals(directory))) {
-            sender.sendMessage("§cDirectory must be one of: " + String.join(", ", paths));
+            sender.sendMessage(Component.text("Directory must be one of: " + String.join(", ", paths), NamedTextColor.RED));
             return;
         }
 

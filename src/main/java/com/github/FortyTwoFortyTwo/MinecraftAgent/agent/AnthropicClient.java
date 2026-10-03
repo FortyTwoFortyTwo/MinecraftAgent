@@ -125,7 +125,7 @@ public class AnthropicClient {
 
                 if (stopReason.equals("end_turn")) {
                     // Log total tokens used and exit out
-                    sender.sendMessage("§7[Tokens used: " + totalTokensUsed + "]");
+                    sender.sendMessage(Component.text("[Tokens used: " + totalTokensUsed + "]", NamedTextColor.GRAY));
                     return;
                 }
 
