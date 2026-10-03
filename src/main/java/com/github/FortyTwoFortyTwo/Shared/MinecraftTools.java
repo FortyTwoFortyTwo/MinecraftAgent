@@ -4,6 +4,8 @@ import com.github.FortyTwoFortyTwo.Shared.Tools.*;
 import com.google.gson.Gson;
 import com.sun.net.httpserver.HttpExchange;
 import io.modelcontextprotocol.spec.McpSchema.*;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -21,6 +23,8 @@ public class MinecraftTools {
 
     static public final Gson GSON = new Gson();
     static public JavaPlugin plugin;
+
+    static public final Component PREFIX = Component.text("[Agent] ", NamedTextColor.GOLD);
 
     static public List<com.github.FortyTwoFortyTwo.Shared.MinecraftTool> list = List.of(
             new BroadcastMessage(),

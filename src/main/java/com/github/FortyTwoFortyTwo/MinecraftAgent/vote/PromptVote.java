@@ -27,8 +27,6 @@ public class PromptVote {
 
     private record Submission(UUID player, Component displayName, String prompt) {}
 
-    private static final Component PREFIX = Component.text("[Agent] ", NamedTextColor.GOLD);
-
     // Shuffled players who haven't submitted yet this cycle, so everyone gets a turn before anyone repeats
     private final List<UUID> bag = new ArrayList<>();
     // Winners that can't be picked until the expiry time
@@ -86,7 +84,7 @@ public class PromptVote {
                 .append(Component.text(" to submit a prompt for the agent (" + submitSeconds + "s)...")));
 
         for (Player player : picked) {
-            player.sendMessage(PREFIX
+            player.sendMessage(MinecraftTools.PREFIX
                     .append(Component.text("You've been picked to submit a prompt! ", NamedTextColor.GREEN))
                     .append(Component.text("[Click to submit]", NamedTextColor.AQUA, TextDecoration.BOLD)
                             .hoverEvent(HoverEvent.showText(Component.text("Type your prompt for the agent")))
@@ -309,6 +307,6 @@ public class PromptVote {
     }
 
     private void broadcast(Component message) {
-        Bukkit.broadcast(PREFIX.append(message));
+        Bukkit.broadcast(MinecraftTools.PREFIX.append(message));
     }
 }
