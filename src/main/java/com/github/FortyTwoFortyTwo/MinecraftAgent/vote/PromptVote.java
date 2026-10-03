@@ -27,7 +27,7 @@ public class PromptVote {
 
     private record Submission(UUID player, Component displayName, String prompt) {}
 
-    private static final Component PREFIX = Component.text("[Vote] ", NamedTextColor.GOLD);
+    private static final Component PREFIX = Component.text("[Agent] ", NamedTextColor.GOLD);
 
     // Shuffled players who haven't submitted yet this cycle, so everyone gets a turn before anyone repeats
     private final List<UUID> bag = new ArrayList<>();
