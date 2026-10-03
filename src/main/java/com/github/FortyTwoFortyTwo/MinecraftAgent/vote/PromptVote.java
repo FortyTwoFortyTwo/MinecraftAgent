@@ -3,6 +3,7 @@ package com.github.FortyTwoFortyTwo.MinecraftAgent.vote;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.MinecraftAgent;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.types.AgentType;
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
+import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
@@ -37,6 +38,7 @@ public class PromptVote {
     private final List<Submission> ballot = new ArrayList<>();
     private final Map<UUID, Integer> votes = new HashMap<>();
     private final Random random = new Random();
+    private final VoteBossBar bossBar = new VoteBossBar();
 
     private Phase phase = Phase.IDLE;
     private BukkitTask timer;
@@ -87,6 +89,9 @@ public class PromptVote {
                             .hoverEvent(HoverEvent.showText(Component.text("Type your prompt for the agent")))
                             .clickEvent(ClickEvent.suggestCommand("/prompt "))));
         }
+
+        bossBar.start(submitSeconds, BossBar.Color.YELLOW, seconds -> Component.text(
+                "Waiting for prompts (" + submissions.size() + "/" + chosen.size() + ") - " + seconds + "s", NamedTextColor.YELLOW));
 
         phaseTask = Bukkit.getScheduler().runTaskLater(MinecraftTools.plugin, this::endSubmit, submitSeconds * 20L);
     }
@@ -150,6 +155,7 @@ public class PromptVote {
 
         boolean replaced = submissions.put(player.getUniqueId(), new Submission(player.getUniqueId(), player.getName(), prompt)) != null;
         player.sendMessage(Component.text(replaced ? "Prompt updated." : "Prompt submitted.", NamedTextColor.GREEN));
+        bossBar.update();
 
         // No need to wait out the timer once everyone has submitted
         if (submissions.size() == chosen.size()) {
@@ -167,6 +173,7 @@ public class PromptVote {
 
         votes.put(player.getUniqueId(), ballot.indexOf(submission));
         player.sendMessage(Component.text("Voted for " + submission.name() + "'s prompt.", NamedTextColor.GREEN));
+        bossBar.update();
     }
 
     private void endSubmit() {
@@ -199,6 +206,9 @@ public class PromptVote {
                     .append(Component.text(" "))
                     .append(button));
         }
+
+        bossBar.start(voteSeconds, BossBar.Color.GREEN, seconds -> Component.text(
+                "Vote for a prompt in chat (" + votes.size() + " vote" + (votes.size() == 1 ? "" : "s") + ") - " + seconds + "s", NamedTextColor.GREEN));
 
         phaseTask = Bukkit.getScheduler().runTaskLater(MinecraftTools.plugin, this::endVote, voteSeconds * 20L);
     }
@@ -278,6 +288,7 @@ public class PromptVote {
             phaseTask.cancel();
 
         phaseTask = null;
+        bossBar.stop();
         phase = Phase.IDLE;
         chosen.clear();
         submissions.clear();
