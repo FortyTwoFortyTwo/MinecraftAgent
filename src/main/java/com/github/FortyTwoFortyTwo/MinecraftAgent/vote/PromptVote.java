@@ -5,6 +5,7 @@ import com.github.FortyTwoFortyTwo.MinecraftAgent.types.AgentType;
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.JoinConfiguration;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -24,7 +25,7 @@ public class PromptVote {
 
     private enum Phase { IDLE, SUBMIT, VOTE }
 
-    private record Submission(UUID player, String name, String prompt) {}
+    private record Submission(UUID player, Component displayName, String prompt) {}
 
     private static final Component PREFIX = Component.text("[Vote] ", NamedTextColor.GOLD);
 
@@ -79,8 +80,10 @@ public class PromptVote {
         picked.forEach(player -> chosen.add(player.getUniqueId()));
 
         int submitSeconds = config().getInt("prompt-vote.submit-seconds");
-        String names = String.join(", ", picked.stream().map(Player::getName).toList());
-        broadcast(Component.text("Waiting on " + names + " to submit a prompt for the agent (" + submitSeconds + "s)...", NamedTextColor.YELLOW));
+        Component names = Component.join(JoinConfiguration.commas(true), picked.stream().map(Player::displayName).toList());
+        broadcast(Component.text("Waiting on ", NamedTextColor.YELLOW)
+                .append(names)
+                .append(Component.text(" to submit a prompt for the agent (" + submitSeconds + "s)...")));
 
         for (Player player : picked) {
             player.sendMessage(PREFIX
@@ -153,7 +156,7 @@ public class PromptVote {
             return;
         }
 
-        boolean replaced = submissions.put(player.getUniqueId(), new Submission(player.getUniqueId(), player.getName(), prompt)) != null;
+        boolean replaced = submissions.put(player.getUniqueId(), new Submission(player.getUniqueId(), player.displayName(), prompt)) != null;
         player.sendMessage(Component.text(replaced ? "Prompt updated." : "Prompt submitted.", NamedTextColor.GREEN));
         bossBar.update();
 
@@ -172,7 +175,9 @@ public class PromptVote {
         }
 
         votes.put(player.getUniqueId(), ballot.indexOf(submission));
-        player.sendMessage(Component.text("Voted for " + submission.name() + "'s prompt.", NamedTextColor.GREEN));
+        player.sendMessage(Component.text("Voted for ", NamedTextColor.GREEN)
+                .append(submission.displayName())
+                .append(Component.text("'s prompt.")));
         bossBar.update();
     }
 
@@ -194,14 +199,15 @@ public class PromptVote {
 
             // Only the button is clickable, not the prompt text
             Component button = Component.text("[Click to vote]", NamedTextColor.GREEN, TextDecoration.BOLD)
-                    .hoverEvent(HoverEvent.showText(Component.text("Vote for " + submission.name() + "'s prompt")))
+                    .hoverEvent(HoverEvent.showText(Component.text("Vote for ").append(submission.displayName()).append(Component.text("'s prompt"))))
                     .clickEvent(ClickEvent.callback(audience -> {
                         if (audience instanceof Player player)
                             vote(player, submission);
                     }));
 
             Bukkit.broadcast(Component.text((i + 1) + ". ", NamedTextColor.GRAY)
-                    .append(Component.text(submission.name() + ": ", NamedTextColor.GRAY))
+                    .append(submission.displayName())
+                    .append(Component.text(": "))
                     .append(Component.text(submission.prompt(), NamedTextColor.WHITE))
                     .append(Component.text(" "))
                     .append(button));
@@ -228,7 +234,9 @@ public class PromptVote {
         List<Submission> tied = new ArrayList<>();
 
         for (int i = 0; i < ballot.size(); i++) {
-            Bukkit.broadcast(Component.text(ballot.get(i).name() + ": " + counts[i] + " vote" + (counts[i] == 1 ? "" : "s"), NamedTextColor.GRAY));
+            Bukkit.broadcast(Component.text("", NamedTextColor.GRAY)
+                    .append(ballot.get(i).displayName())
+                    .append(Component.text(": " + counts[i] + " vote" + (counts[i] == 1 ? "" : "s"))));
             if (counts[i] == max)
                 tied.add(ballot.get(i));
         }
@@ -250,12 +258,16 @@ public class PromptVote {
             return;
         }
 
-        broadcast(Component.text(winner.name() + "'s prompt was chosen: ", NamedTextColor.GREEN)
+        broadcast(Component.text("", NamedTextColor.GREEN)
+                .append(winner.displayName())
+                .append(Component.text("'s prompt was chosen: "))
                 .append(Component.text(winner.prompt(), NamedTextColor.WHITE)));
 
         Player player = Bukkit.getPlayer(winner.player());
         if (player == null) {
-            broadcast(Component.text(winner.name() + " left, skipping their prompt.", NamedTextColor.RED));
+            broadcast(Component.text("", NamedTextColor.RED)
+                    .append(winner.displayName())
+                    .append(Component.text(" left, skipping their prompt.")));
             return;
         }
 
