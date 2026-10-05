@@ -78,6 +78,7 @@ Everyone on the server then votes by clicking a submission in chat. A tie is bro
 The winning prompt runs as `/agent <prompt-vote.type>` on behalf of the player who submitted it, and the agent's replies are broadcast to the whole server.
 
 The prompt gets every tool the chosen type has, so any player picked to submit can effectively run operator commands if their prompt wins the vote.
+Operators can use `/admin denyprompt <player>` to stop a submitted prompt from being chosen, which also clears any votes for it.
 
 ### Claude subscription
 
@@ -85,7 +86,7 @@ The prompt gets every tool the chosen type has, so any player picked to submit c
 Run `claude setup-token` on the server host and put the token in `claude-code.oauth-token`, or leave it empty to use the host's `claude login` session.
 The token doesn't have to come from the server host, so on hosts without a shell or browser (e.g. Pterodactyl) run it on your own machine instead.
 
-If Claude Code isn't installed on the server host, `/claudeinstall` runs the official native installer (`curl -fsSL https://claude.ai/install.sh | bash`, or `install.ps1` on Windows) and streams its output to chat.
+If Claude Code isn't installed on the server host, `/admin claudeinstall` runs the official native installer (`curl -fsSL https://claude.ai/install.sh | bash`, or `install.ps1` on Windows) and streams its output to chat.
 It installs a single binary into `~/.local/bin` with no Node needed, which is used automatically when `claude-code.executable` is empty.
 On Pterodactyl the home directory is `/home/container`, so the install persists across restarts. The image needs `curl` and `bash`, and outbound internet access.
 `ANTHROPIC_API_KEY` is never passed through, since it would take priority over the subscription.

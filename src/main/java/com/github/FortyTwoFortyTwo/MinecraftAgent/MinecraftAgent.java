@@ -3,8 +3,8 @@ package com.github.FortyTwoFortyTwo.MinecraftAgent;
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.AnthropicClient;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.BridgeHttpServer;
+import com.github.FortyTwoFortyTwo.MinecraftAgent.commands.AdminCommand;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.commands.AgentCommand;
-import com.github.FortyTwoFortyTwo.MinecraftAgent.commands.InstallCommand;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.commands.PromptCommand;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.types.AgentType;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.types.ApiAgent;
@@ -29,7 +29,7 @@ public class MinecraftAgent extends JavaPlugin {
 
     private ErrorCatcherAppender errorAppender;
 
-    private PromptVote promptVote;
+    public static PromptVote promptVote;
 
     @Override
     public void onEnable() {
@@ -55,8 +55,8 @@ public class MinecraftAgent extends JavaPlugin {
         // Register commands
         CommandMap commandMap = Bukkit.getServer().getCommandMap();
         commandMap.register("agent", new AgentCommand(types));
-        commandMap.register("agent", new PromptCommand(promptVote));
-        commandMap.register("agent", new InstallCommand());
+        commandMap.register("agent", new PromptCommand());
+        commandMap.register("agent", new AdminCommand());
 
         promptVote.start();
 

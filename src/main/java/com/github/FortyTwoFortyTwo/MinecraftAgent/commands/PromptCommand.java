@@ -1,6 +1,6 @@
 package com.github.FortyTwoFortyTwo.MinecraftAgent.commands;
 
-import com.github.FortyTwoFortyTwo.MinecraftAgent.vote.PromptVote;
+import com.github.FortyTwoFortyTwo.MinecraftAgent.MinecraftAgent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.CommandSender;
@@ -13,11 +13,8 @@ import java.util.List;
 /** Open to every player, to submit prompts for PromptVote */
 public class PromptCommand extends BukkitCommand {
 
-    private final PromptVote promptVote;
-
-    public PromptCommand(PromptVote promptVote) {
+    public PromptCommand() {
         super("prompt");
-        this.promptVote = promptVote;
     }
 
     @Override
@@ -32,7 +29,7 @@ public class PromptCommand extends BukkitCommand {
             return true;
         }
 
-        promptVote.submit(player, String.join(" ", args));
+        MinecraftAgent.promptVote.submit(player, String.join(" ", args));
         return true;
     }
 }

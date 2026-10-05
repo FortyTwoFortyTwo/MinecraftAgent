@@ -39,6 +39,8 @@ public class PromptVote {
     private final Map<UUID, Submission> submissions = new LinkedHashMap<>();
     private final List<Submission> ballot = new ArrayList<>();
     private final Map<UUID, Integer> votes = new HashMap<>();
+    // Submitters whose prompt an admin denied during the vote, kept on the ballot so vote indexes stay valid
+    private final Set<UUID> denied = new HashSet<>();
     private final Random random = new Random();
     private final VoteBossBar bossBar = new VoteBossBar();
     // One per winning prompt still running, as the next round can finish before the last agent does
@@ -192,10 +194,87 @@ public class PromptVote {
         }
     }
 
+    /** Names of players whose prompt can still be denied this round */
+    public List<String> deniable() {
+        return pending().stream()
+                .map(submission -> Bukkit.getOfflinePlayer(submission.player()).getName())
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    /** Stops the named player's prompt from being chosen this round */
+    public void deny(CommandSender sender, String name) {
+        if (phase == Phase.IDLE) {
+            sender.sendMessage(Component.text("No prompt vote is running.", NamedTextColor.RED));
+            return;
+        }
+
+        Submission submission = pending().stream()
+                .filter(pending -> name.equalsIgnoreCase(Bukkit.getOfflinePlayer(pending.player()).getName()))
+                .findFirst()
+                .orElse(null);
+
+        if (submission == null) {
+            sender.sendMessage(Component.text("No pending prompt from " + name + ".", NamedTextColor.RED));
+            return;
+        }
+
+        Player player = Bukkit.getPlayer(submission.player());
+        if (player != null)
+            player.sendMessage(Component.text("Your prompt was denied by an admin.", NamedTextColor.RED));
+
+        sender.sendMessage(Component.text("Denied ", NamedTextColor.GREEN)
+                .append(submission.displayName())
+                .append(Component.text("'s prompt: "))
+                .append(quoted(submission.prompt())));
+
+        if (phase == Phase.SUBMIT) {
+            // Prompts aren't public yet, so quietly drop it and don't let them submit another
+            submissions.remove(submission.player());
+            chosen.remove(submission.player());
+            bossBar.update();
+
+            if (submissions.size() == chosen.size()) {
+                phaseTask.cancel();
+                endSubmit();
+            }
+
+            return;
+        }
+
+        denied.add(submission.player());
+        int index = ballot.indexOf(submission);
+        votes.values().removeIf(vote -> vote == index);
+        bossBar.update();
+
+        broadcast(Component.text("", NamedTextColor.RED)
+                .append(submission.displayName())
+                .append(Component.text("'s prompt was denied by an admin, votes for it have been cleared.")));
+
+        if (pending().isEmpty()) {
+            broadcast(Component.text("Every prompt was denied, skipping this round.", NamedTextColor.RED));
+            reset();
+        }
+    }
+
+    /** Submissions still in the running this round */
+    private List<Submission> pending() {
+        return switch (phase) {
+            case IDLE -> List.of();
+            case SUBMIT -> List.copyOf(submissions.values());
+            case VOTE -> ballot.stream().filter(submission -> !denied.contains(submission.player())).toList();
+        };
+    }
+
     private void vote(Player player, Submission submission) {
         // Buttons from an earlier round stay clickable in chat, so make sure this one is still on the ballot
         if (phase != Phase.VOTE || !ballot.contains(submission)) {
             player.sendMessage(Component.text("This vote has already ended.", NamedTextColor.RED));
+            return;
+        }
+
+        if (denied.contains(submission.player())) {
+            player.sendMessage(Component.text("This prompt was denied by an admin.", NamedTextColor.RED));
             return;
         }
 
@@ -255,6 +334,9 @@ public class PromptVote {
         List<Submission> tied = new ArrayList<>();
 
         for (int i = 0; i < ballot.size(); i++) {
+            if (denied.contains(ballot.get(i).player()))
+                continue;
+
             Bukkit.broadcast(Component.text("", NamedTextColor.GRAY)
                     .append(ballot.get(i).displayName())
                     .append(Component.text(": " + counts[i] + " vote" + (counts[i] == 1 ? "" : "s"))));
@@ -336,6 +418,7 @@ public class PromptVote {
         submissions.clear();
         ballot.clear();
         votes.clear();
+        denied.clear();
     }
 
     /** Shows a prompt in italics, wrapped in gray quotes */
