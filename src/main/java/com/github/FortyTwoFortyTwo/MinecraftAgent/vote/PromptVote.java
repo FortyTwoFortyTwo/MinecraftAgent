@@ -218,7 +218,7 @@ public class PromptVote {
             Bukkit.broadcast(Component.text((i + 1) + ". ", NamedTextColor.GRAY)
                     .append(submission.displayName())
                     .append(Component.text(": "))
-                    .append(Component.text(submission.prompt(), NamedTextColor.WHITE))
+                    .append(quoted(submission.prompt()))
                     .append(Component.text(" "))
                     .append(button));
         }
@@ -271,7 +271,7 @@ public class PromptVote {
         broadcast(Component.text("", NamedTextColor.GREEN)
                 .append(winner.displayName())
                 .append(Component.text("'s prompt was chosen: "))
-                .append(Component.text(winner.prompt(), NamedTextColor.WHITE)));
+                .append(quoted(winner.prompt())));
 
         Player player = Bukkit.getPlayer(winner.player());
         if (player == null) {
@@ -320,6 +320,13 @@ public class PromptVote {
         submissions.clear();
         ballot.clear();
         votes.clear();
+    }
+
+    /** Shows a prompt in italics, wrapped in gray quotes */
+    private static Component quoted(String prompt) {
+        return Component.text("\"", NamedTextColor.GRAY)
+                .append(Component.text(prompt, NamedTextColor.WHITE, TextDecoration.ITALIC))
+                .append(Component.text("\""));
     }
 
     private void broadcast(Component message) {
