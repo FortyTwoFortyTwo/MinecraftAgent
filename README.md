@@ -74,7 +74,7 @@ Tool calls are always made on behalf of the player who ran the command.
 
 When `prompt-vote.enabled` is set, every `prompt-vote.interval-seconds` a few random players are asked to submit a prompt with `/prompt <prompt>`.
 Players are picked from a shuffled list, so everyone gets a turn before anyone is picked again, and the most recent winners, `winner-cooldown-percent` of online players, can't be picked again.
-Everyone on the server then votes by clicking the `[Click to vote]` button next to a submission in chat. A tie is broken at random, and the round is skipped if nobody votes.
+Everyone on the server then votes by clicking a submission in chat. A tie is broken at random, and the round is skipped if nobody votes.
 The winning prompt runs as `/agent <prompt-vote.type>` on behalf of the player who submitted it, and the agent's replies are broadcast to the whole server.
 
 The prompt gets every tool the chosen type has, so any player picked to submit can effectively run operator commands if their prompt wins the vote.

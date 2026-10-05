@@ -217,25 +217,21 @@ public class PromptVote {
 
         phase = Phase.VOTE;
         int voteSeconds = config().getInt("prompt-vote.vote-seconds");
-        broadcast(Component.text("Vote for which prompt to send to the agent (" + voteSeconds + "s):", NamedTextColor.YELLOW));
+        broadcast(Component.text("Click a prompt below to vote for which one gets sent to the agent (" + voteSeconds + "s):", NamedTextColor.YELLOW));
 
-        for (int i = 0; i < ballot.size(); i++) {
-            Submission submission = ballot.get(i);
-
-            // Only the button is clickable, not the prompt text
-            Component button = Component.text("[Click to vote]", NamedTextColor.GREEN, TextDecoration.BOLD)
-                    .hoverEvent(HoverEvent.showText(Component.text("Vote for ").append(submission.displayName()).append(Component.text("'s prompt"))))
-                    .clickEvent(ClickEvent.callback(audience -> {
-                        if (audience instanceof Player player)
-                            vote(player, submission);
-                    }));
-
-            Bukkit.broadcast(Component.text((i + 1) + ". ", NamedTextColor.GRAY)
+        for (Submission submission : ballot) {
+            // The whole line is clickable, children inherit the hover and click events
+            Bukkit.broadcast(Component.text("- ", NamedTextColor.GRAY)
                     .append(submission.displayName())
                     .append(Component.text(": "))
                     .append(quoted(submission.prompt()))
-                    .append(Component.text(" "))
-                    .append(button));
+                    .hoverEvent(HoverEvent.showText(Component.text("Click to vote for ", NamedTextColor.GREEN)
+                            .append(submission.displayName())
+                            .append(Component.text("'s prompt"))))
+                    .clickEvent(ClickEvent.callback(audience -> {
+                        if (audience instanceof Player player)
+                            vote(player, submission);
+                    })));
         }
 
         bossBar.start(voteSeconds, BossBar.Color.GREEN, seconds -> Component.text(
