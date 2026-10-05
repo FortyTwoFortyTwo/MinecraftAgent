@@ -56,10 +56,11 @@ public class AnthropicClient {
     public void sendMessage(CommandSender sender, String userMessage, String system, List<MinecraftTool> tools, AgentProgress progress) {
         List<JsonObject> messages = new ArrayList<>();
         messages.add(message("user", userMessage));
+        ToolGuard guard = new ToolGuard(sender.getName());
 
         Bukkit.getScheduler().runTaskAsynchronously(MinecraftTools.plugin, () -> {
             try {
-                run(sender, messages, system, tools, progress);
+                run(sender, messages, system, tools, guard, progress);
             } catch (Exception e) {
                 logger().log(Level.WARNING, "Anthropic API run failed", e);
                 sender.sendMessage(Component.text("Agent request failed: " + e, NamedTextColor.RED));
@@ -69,7 +70,7 @@ public class AnthropicClient {
         });
     }
 
-    private void run(CommandSender sender, List<JsonObject> messages, String system, List<MinecraftTool> tools, AgentProgress progress) throws IOException {
+    private void run(CommandSender sender, List<JsonObject> messages, String system, List<MinecraftTool> tools, ToolGuard guard, AgentProgress progress) throws IOException {
         int totalTokensUsed = 0;
 
         for (int turn = 0; turn < maxTurns; turn++) {
@@ -104,19 +105,17 @@ public class AnthropicClient {
             for (JsonElement element : contentArray) {
                 JsonObject block = element.getAsJsonObject();
                 switch (block.get("type").getAsString()) {
-                    case "text" -> sender.sendMessage(MinecraftTools.MINI_MESSAGE.deserialize(block.get("text").getAsString()));
+                    case "text" -> sender.sendMessage(MinecraftTools.MINI_MESSAGE.deserialize(block.get("text").getAsString(), MinecraftTools.playerTexts(guard.texts())));
                     case "tool_use" -> {
                         String toolName = block.get("name").getAsString();
                         JsonObject input = block.getAsJsonObject("input");
-                        // Never trust a sender the model made up
-                        input.addProperty("sender", sender.getName());
                         progress.step(turn + 1, maxTurns, "Using " + toolName);
                         logger().info("Using " + toolName + " " + input);
 
                         JsonObject resultBlock = new JsonObject();
                         resultBlock.addProperty("type", "tool_result");
                         resultBlock.addProperty("tool_use_id", block.get("id").getAsString());
-                        resultBlock.addProperty("content", MinecraftTools.GSON.toJson(callTool(tools, toolName, input)));
+                        resultBlock.addProperty("content", MinecraftTools.GSON.toJson(callTool(tools, guard, toolName, input)));
                         toolResults.add(resultBlock);
                     }
                 }
@@ -183,10 +182,10 @@ public class AnthropicClient {
     }
 
     /** Calls the given tool, if it's one this run is allowed to use */
-    private static Map<String, Serializable> callTool(List<MinecraftTool> tools, String toolName, JsonObject input) {
+    private static Map<String, Serializable> callTool(List<MinecraftTool> tools, ToolGuard guard, String toolName, JsonObject input) {
         return MinecraftTools.find(toolName)
                 .filter(tools::contains)
-                .map(tool -> tool.safeExecute(input))
+                .map(tool -> guard.call(tool, input))
                 .orElse(Map.of("error", "Unknown tool name: " + toolName));
     }
 

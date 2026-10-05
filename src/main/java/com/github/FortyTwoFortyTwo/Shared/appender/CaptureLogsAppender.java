@@ -9,12 +9,14 @@ import org.apache.logging.log4j.core.config.Configuration;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Collects everything logged until end() is called, which must always happen, e.g. in a finally block */
+/** Collects everything the creating thread logs until end() is called, which must always happen, e.g. in a finally block */
 public class CaptureLogsAppender extends AbstractAppender {
 
     private static final String NAME = "CaptureAppender";
 
     private final List<String> output = new ArrayList<>();
+    // Only this thread's logs, so chat and anything else logged on other threads never reaches the agent as tool output
+    private final String threadName = Thread.currentThread().getName();
 
     @SuppressWarnings("this-escape")
     public CaptureLogsAppender() {
@@ -31,6 +33,9 @@ public class CaptureLogsAppender extends AbstractAppender {
 
     @Override
     public void append(LogEvent event) {
+        if (!threadName.equals(event.getThreadName()))
+            return;
+
         // Capture whatever logs comes out from dispatch for AI to analyze result
         output.add(event.getMessage().getFormattedMessage());
     }

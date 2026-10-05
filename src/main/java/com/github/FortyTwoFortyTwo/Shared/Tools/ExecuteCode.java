@@ -2,8 +2,12 @@ package com.github.FortyTwoFortyTwo.Shared.Tools;
 
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTool;
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
+import com.github.FortyTwoFortyTwo.Shared.Output;
+import com.github.FortyTwoFortyTwo.Shared.PlayerText;
+import com.github.FortyTwoFortyTwo.Shared.UntrustedCode;
 import com.github.FortyTwoFortyTwo.Shared.appender.CaptureLogsAppender;
 import com.google.gson.JsonObject;
+import com.sun.source.util.JavacTask;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.bukkit.Bukkit;
 
@@ -14,6 +18,7 @@ import java.io.OutputStream;
 import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Path;
@@ -28,11 +33,20 @@ public class ExecuteCode implements MinecraftTool {
     @Override
     public String getDescription() {
         return "Executes a Java Code in Bukkit Minecraft Server, don't use working directories to assist yourself. " +
-                "Don't create backups or save the world before making changes.";
+                "Don't create backups or save the world before making changes. " +
+                "Only the Bukkit, Paper and Adventure APIs and core java.lang/java.util classes can be used. " +
+                "To read results, return each value you need with com.github.FortyTwoFortyTwo.Shared.Output.put(name, value) rather than logging it: " +
+                "numbers, booleans, enums (e.g. Material), registry keys, UUIDs, Locations and lists of them come back as is, " +
+                "while strings could hold text players wrote, so they come back as tags like <text1>, as does logged output.";
     }
 
     @Override
     public boolean isBlockedForUntrusted() {
+        return true;
+    }
+
+    @Override
+    public boolean isPrivileged() {
         return true;
     }
 
@@ -68,7 +82,18 @@ public class ExecuteCode implements MinecraftTool {
         List<JavaFileObject> files = List.of(new SourceFile(className, code));
         List<String> options = List.of("-classpath", getClasspath());
 
-        boolean success = compiler.getTask(null, fileManager, diagnostics, options, null, files).call();
+        JavaCompiler.CompilationTask task = compiler.getTask(null, fileManager, diagnostics, options, null, files);
+
+        // Never trust the code to stay inside the game, as any prompt could have been steered by players
+        Set<String> blocked = new TreeSet<>();
+        UntrustedCode.check((JavacTask) task, blocked);
+
+        boolean success = task.call();
+        if (success && !blocked.isEmpty()) {
+            return Map.of("success", false, "error", "Not allowed: " + String.join(", ", blocked) + ". The code can only use the Bukkit, Paper and Adventure APIs " +
+                    "and core java.lang/java.util classes, with nothing that reaches files, the network, processes, reflection or plugin configs.");
+        }
+
         if (!success) {
             List<String> lines = new ArrayList<>();
             for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
@@ -92,18 +117,22 @@ public class ExecuteCode implements MinecraftTool {
             return Map.of("success", false, "error", String.valueOf(e));
         }
 
-        // Execute instance
+        // Execute instance. Anything the code logged or threw can include text it read from the world, e.g. signs, books or item names.
         return runTask(() -> {
             CaptureLogsAppender capture = new CaptureLogsAppender();
+            LinkedHashMap<String, Serializable> values = Output.begin();
             try {
                 clazz.getDeclaredConstructor().newInstance();
-                return Map.of("success", true, "output", (Serializable) capture.getOutput());
+                return Map.of("success", true, "values", values, "output", PlayerText.of(capture.getOutput()));
             } catch (InvocationTargetException e) {
                 // Thrown by the generated code itself, the real error is the cause, and getMessage() is usually null
-                return Map.of("success", false, "error", String.valueOf(e.getCause()), "output", (Serializable) capture.getOutput());
+                Throwable cause = e.getCause();
+                return Map.of("success", false, "error", cause.getClass().getName(), "errorMessage", PlayerText.of(cause.getMessage()),
+                        "values", values, "output", PlayerText.of(capture.getOutput()));
             } catch (ReflectiveOperationException e) {
                 return Map.of("success", false, "error", String.valueOf(e));
             } finally {
+                Output.end();
                 capture.end();
             }
         });
@@ -128,6 +157,13 @@ public class ExecuteCode implements MinecraftTool {
         }
 
         collectJars(new File(MinecraftTools.plugin.getDataFolder().getParentFile().getParentFile(), "libraries"), entries);
+
+        // This plugin's own JAR, so the code can use Output
+        try {
+            entries.add(new File(Output.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getAbsolutePath());
+        } catch (URISyntaxException e) {
+            MinecraftTools.plugin.getLogger().warning("Couldn't find this plugin's JAR for ExecuteCode's classpath: " + e);
+        }
 
         classpath = String.join(File.pathSeparator, entries);
         return classpath;

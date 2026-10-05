@@ -31,6 +31,12 @@ public class TextEditor implements MinecraftTool {
     }
 
     @Override
+    public boolean returnsPlayerText(JsonObject input) {
+        // Files can hold anything players wrote, e.g. logs with chat in them
+        return input.has("command") && input.get("command").getAsString().equals("view");
+    }
+
+    @Override
     public Map<String, Serializable> execute(JsonObject input) {
         String command = input.get("command").getAsString();
 

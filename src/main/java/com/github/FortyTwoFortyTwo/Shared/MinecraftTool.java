@@ -45,6 +45,19 @@ public interface MinecraftTool {
         return false;
     }
 
+    /** Whether this tool is disabled for the rest of a run once any tool has returned text players could have written */
+    default boolean isPrivileged() {
+        return false;
+    }
+
+    /**
+     * Whether this call returns text players could have written that the agent has to read as is, e.g. a viewed file, which could carry instructions.
+     * Text the agent doesn't need to read should be returned as PlayerText instead, which keeps it hidden.
+     */
+    default boolean returnsPlayerText(JsonObject input) {
+        return false;
+    }
+
     default String getPath() {
         return "/tools/" + getName().toLowerCase();
     }

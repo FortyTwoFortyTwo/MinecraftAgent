@@ -27,14 +27,14 @@ public class MinecraftMcpServer {
 
     private static final String PATH = "/mcp";
 
-    private final String sender;
+    private final ToolGuard guard;
     private final String secret = MinecraftTools.randomSecret();
 
     private HttpServer server;
     private ExecutorService executor;
 
     public MinecraftMcpServer(String sender) {
-        this.sender = sender;
+        this.guard = new ToolGuard(sender);
     }
 
     public void start() throws IOException {
@@ -150,10 +150,7 @@ public class MinecraftMcpServer {
                         ? params.getAsJsonObject("arguments")
                         : new JsonObject();
 
-                // Same as AnthropicClient, never trust a sender the model made up
-                arguments.addProperty("sender", sender);
-
-                Map<String, Serializable> output = tool.safeExecute(arguments);
+                Map<String, Serializable> output = guard.call(tool, arguments);
 
                 JsonObject content = new JsonObject();
                 content.addProperty("type", "text");

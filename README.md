@@ -78,6 +78,7 @@ Everyone on the server then votes by clicking a submission in chat. A tie is bro
 The winning prompt runs as `/agent <prompt-vote.type>` on behalf of the player who submitted it, and the agent's replies are broadcast to the whole server.
 
 The prompt gets every tool the chosen type has, so any player picked to submit can effectively run operator commands if their prompt wins the vote.
+The [tool limits](#tools) still apply, which keep the agent inside the game.
 Operators can use `/admin denyprompt <player>` to stop a submitted prompt from being chosen, which also clears any votes for it.
 
 ### Claude subscription
@@ -94,6 +95,16 @@ On Pterodactyl the home directory is `/home/container`, so the install persists 
 ## Tools
 
 [src/main/java/com/github/FortyTwoFortyTwo/Shared/Tools](https://github.com/FortyTwoFortyTwo/MinecraftAgent/tree/main/src/main/java/com/github/FortyTwoFortyTwo/Shared/Tools) contains the tools available to the AI agent. Some noteworthy ones are described below:
+
+Every prompt is treated as untrusted, as players can submit them through a [prompt vote](#prompt-vote), and anything the agent reads from the world could carry instructions:
+- `ExecuteCode` only allows the Bukkit, Paper and Adventure APIs and core `java.lang`/`java.util` classes, checked when the code compiles, so nothing reaches files, the network, processes, reflection or plugin configs (this one holds API keys).
+- Logged output, command feedback and error messages from `ExecuteCode` and `RunConsoleCommand` come back as tags like `<text1>`, as they could hold text players wrote, so instructions hidden in signs, books, item names or chat can't steer the agent.
+  The agent can't read them, but `BroadcastMessage` (and `/agent api`'s replies) swap them back for the text, inserted as plain text so it can't add its own formatting or click events.
+- Files the agent views with `TextEditor` have to be readable to edit them, so viewing one disables `ExecuteCode` and `RunConsoleCommand` for the rest of the run instead.
+
+These apply to `/agent api` and `/agent mcp`. Over the HTTP bridge the `ExecuteCode` limits still apply, but output isn't hidden and file views don't disable anything, as each tool call arrives on its own with no run to track.
+
+`/agent code` uses Claude Code's own file tools in its directory, which these limits don't cover.
 
 ### GetPlayerPrompt
 
@@ -112,8 +123,8 @@ These tools allow the agent to query the registry directly to get up-to-date val
 A simple but powerful tool that lets the AI run any Minecraft console command.
 The agent is generally good at knowing the correct command syntax.
 
-Any log output produced during command execution is captured and returned to the agent, allowing it to analyse the outcome.
-If a command contains a syntax error, the agent can read the error message and attempt to correct and retry the command.
+Any log output produced during command execution is captured, but hidden from the agent as a `<text1>` tag it can only show to players, since feedback can include text players wrote.
+The agent is still told whether the command exists.
 
 This tool comes with a risk of abuse as it grants access to all operator-level commands without restriction.
 
@@ -121,9 +132,15 @@ This tool comes with a risk of abuse as it grants access to all operator-level c
 
 Allows the agent to write and immediately execute Java code within the Minecraft server, giving it the ability to perform almost any operation supported by the available packages.
 
-Compile errors and runtime exceptions are captured and sent back to the agent, which can then attempt to fix the code and retry.
+Compile errors are sent back to the agent, which can then attempt to fix the code and retry.
+For runtime exceptions it only gets the exception type, as the message and any logged output are hidden like `RunConsoleCommand`'s.
 
-This tool is significantly more powerful than `RunConsoleCommand`, as it lets the agent execute code with unrestricted access to the server with no guardrails...
+To read results, the code returns values with [`Output.put(name, value)`](https://github.com/FortyTwoFortyTwo/MinecraftAgent/blob/main/src/main/java/com/github/FortyTwoFortyTwo/Shared/Output.java).
+Values that can't hold text players wrote, such as numbers, booleans, enums like `Material`, registry keys, UUIDs and locations, are shown to the agent as is, so it can reason about them.
+Strings and anything else are hidden as their own `<text1>` tag, so only that value is hidden, not the whole result.
+
+This tool is significantly more powerful than `RunConsoleCommand`, as it lets the agent do anything in the game the API allows.
+It can't reach the host though, as only classes allowed by [UntrustedCode](https://github.com/FortyTwoFortyTwo/MinecraftAgent/blob/main/src/main/java/com/github/FortyTwoFortyTwo/Shared/UntrustedCode.java) can be used.
 
 ### TextEditor
 

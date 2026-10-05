@@ -11,7 +11,9 @@ public interface AgentType {
     String SYSTEM_PROMPT =
             "You are an AI agent embedded in a Minecraft server with full operator-level control.\n" +
             "Use your available tools proactively to fulfil requests rather than just describing what you would do.\n" +
-            "Don't create backups or save the world before making changes, just make the changes directly.";
+            "Don't create backups or save the world before making changes, just make the changes directly.\n" +
+            "Text players could have written comes back from tools as tags like <text1>, which you can't read but can show to players by putting the tag in a message. " +
+            "Viewing a file disables ExecuteCode and RunConsoleCommand for the rest of this run, so make those changes before viewing files.";
 
     /** Name typed after /agent */
     String name();

@@ -8,6 +8,7 @@ import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 
 import java.io.Serializable;
+import java.util.HashMap;
 import java.util.Map;
 
 public class BroadcastMessage implements MinecraftTool {
@@ -21,7 +22,8 @@ public class BroadcastMessage implements MinecraftTool {
                 "player names, items, numbers and coordinates, use <green> for success and <red> for problems. " +
                 "Supported tags: colours (<red>, <gold>, <aqua>, <#ff8800>, ...), <bold>, <italic>, <underlined>, " +
                 "<strikethrough>, <obfuscated>, <gradient:#ff0000:#0000ff>, <rainbow>, <reset> and <newline>. " +
-                "Close tags with </tag>, and escape a literal < as \\<.";
+                "Close tags with </tag>, and escape a literal < as \\<. " +
+                "Tags like <text1> that other tools returned in place of text players could have written show that text here.";
     }
 
     @Override
@@ -41,10 +43,16 @@ public class BroadcastMessage implements MinecraftTool {
         if (message.isEmpty())
             return Map.of("error", "Missing 'message' field");
 
+        // Text hidden from the agent, provided by whoever runs it, never the model
+        Map<String, String> texts = new HashMap<>();
+        if (input.has("texts") && input.get("texts").isJsonObject())
+            input.getAsJsonObject("texts").entrySet().forEach(entry -> texts.put(entry.getKey(), entry.getValue().getAsString()));
+
         runTask(() -> {
-            Bukkit.broadcast(Component.empty().append(MinecraftTools.PREFIX).append(MinecraftTools.MINI_MESSAGE.deserialize(message)));
+            Bukkit.broadcast(Component.empty().append(MinecraftTools.PREFIX).append(MinecraftTools.MINI_MESSAGE.deserialize(message, MinecraftTools.playerTexts(texts))));
         });
 
+        // Echo the message as written, so hidden text never comes back to the agent
         return Map.of("success", true, "message", message);
     }
 }

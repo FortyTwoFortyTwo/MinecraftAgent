@@ -6,6 +6,7 @@ import com.sun.net.httpserver.HttpExchange;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import net.kyori.adventure.text.minimessage.tag.standard.StandardTags;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -17,6 +18,7 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -41,6 +43,11 @@ public class MinecraftTools {
                     StandardTags.reset(),
                     StandardTags.newline()))
             .build();
+
+    /** Placeholders like <text1> for text players could have written that was hidden from the agent, inserted unparsed so it can't add formatting or click events */
+    public static TagResolver playerTexts(Map<String, String> texts) {
+        return TagResolver.resolver(texts.entrySet().stream().map(entry -> Placeholder.unparsed(entry.getKey(), entry.getValue())).toList());
+    }
 
     public static final List<MinecraftTool> list = List.of(
             new BroadcastMessage(),
