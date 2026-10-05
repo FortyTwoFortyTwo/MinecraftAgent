@@ -78,7 +78,7 @@ public class AnthropicClient {
                 return;
             }
 
-            progress.step(turn + 1, maxTurns, "Thinking");
+            progress.step(turn + 1, maxTurns, AgentProgress.thinking());
             JsonObject response = doRequest(messages, system, tools);
 
             if (response.get("type").getAsString().equals("error")) {

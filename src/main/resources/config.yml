@@ -29,6 +29,33 @@ error-catcher:
 
 directories:
 
+# Shown on the agent's progress boss bar while it's thinking, one picked at random every turn
+thinking-statuses:
+  - "Thinking"
+  - "Pondering"
+  - "Contemplating"
+  - "Mulling it over"
+  - "Brainstorming"
+  - "Scheming"
+  - "Cogitating"
+  - "Ruminating"
+  - "Noodling"
+  - "Brewing"
+  - "Daydreaming"
+  - "Galaxy braining"
+  - "Overthinking"
+  - "Reticulating splines"
+  - "Asking the villagers"
+  - "Hmmming"
+  - "Big brain time"
+  - "Evil plotting"
+  - "Calculating the meaning of life"
+  - "Consulting the Thinker"
+  - "Wasting claude tokens"
+  - "Consuming electric grid power"
+  - "AI slopping"
+  - "Gathering secret keys"
+
 # Every interval, a few random players submit a prompt, then everyone votes on which one gets sent to the agent
 prompt-vote:
   enabled: true

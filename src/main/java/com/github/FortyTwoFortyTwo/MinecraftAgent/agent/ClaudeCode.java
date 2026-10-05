@@ -266,7 +266,7 @@ public class ClaudeCode {
                 if (message.has("id"))
                     turns.add(message.get("id").getAsString());
 
-                String status = "Thinking";
+                String status = AgentProgress.thinking();
                 for (JsonElement element : message.getAsJsonArray("content")) {
                     JsonObject block = element.getAsJsonObject();
                     switch (block.get("type").getAsString()) {
