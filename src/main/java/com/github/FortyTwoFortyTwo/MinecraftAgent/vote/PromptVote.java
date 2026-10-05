@@ -32,8 +32,8 @@ public class PromptVote {
 
     // Shuffled players who haven't submitted yet this cycle, so everyone gets a turn before anyone repeats
     private final List<UUID> bag = new ArrayList<>();
-    // Winners that can't be picked until the expiry time
-    private final Map<UUID, Long> cooldowns = new HashMap<>();
+    // Past winners, most recent first, so the latest few can be kept from being picked again
+    private final LinkedList<UUID> winners = new LinkedList<>();
 
     private final Set<UUID> chosen = new HashSet<>();
     private final Map<UUID, Submission> submissions = new LinkedHashMap<>();
@@ -110,11 +110,9 @@ public class PromptVote {
     }
 
     private List<Player> pickSubmitters() {
-        long now = System.currentTimeMillis();
-        cooldowns.values().removeIf(expiry -> expiry <= now);
-
+        Set<UUID> onCooldown = winnersOnCooldown();
         List<Player> eligible = Bukkit.getOnlinePlayers().stream()
-                .filter(player -> !cooldowns.containsKey(player.getUniqueId()))
+                .filter(player -> !onCooldown.contains(player.getUniqueId()))
                 .map(player -> (Player) player)
                 .toList();
 
@@ -135,6 +133,23 @@ public class PromptVote {
         }
 
         return picked;
+    }
+
+    /** The most recent online winners, as many as winner-cooldown-percent of online players, always leaving at least one player eligible */
+    private Set<UUID> winnersOnCooldown() {
+        int online = Bukkit.getOnlinePlayers().size();
+        int count = Math.min((int) (online * config().getDouble("prompt-vote.winner-cooldown-percent")), online - 1);
+
+        Set<UUID> onCooldown = new HashSet<>();
+        for (UUID winner : winners) {
+            if (onCooldown.size() >= count)
+                break;
+
+            if (Bukkit.getPlayer(winner) != null)
+                onCooldown.add(winner);
+        }
+
+        return onCooldown;
     }
 
     private void takeFromBag(List<Player> eligible, List<Player> picked, int submitters) {
@@ -255,7 +270,12 @@ public class PromptVote {
     }
 
     private void runWinner(Submission winner) {
-        cooldowns.put(winner.player(), System.currentTimeMillis() + config().getInt("prompt-vote.winner-cooldown-seconds") * 1000L);
+        winners.remove(winner.player());
+        winners.addFirst(winner.player());
+        // No more than the max player count can ever be on cooldown
+        while (winners.size() > Bukkit.getMaxPlayers())
+            winners.removeLast();
+
         reset();
 
         // Type name, optionally followed by arguments that go before the prompt, e.g. "code <directory>"

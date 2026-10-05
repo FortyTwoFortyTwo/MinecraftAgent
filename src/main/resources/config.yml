@@ -70,5 +70,6 @@ prompt-vote:
   submit-seconds: 60
   vote-seconds: 30
   max-prompt-length: 200
-  # How long a player whose prompt won can't be picked again
-  winner-cooldown-seconds: 1800
+  # The most recent winners, as a percent of online players from 0 to 1, can't be picked again. e.g. 0.5 with 10 players online means the last 5 winners can't be picked.
+  # At least one player is always left eligible.
+  winner-cooldown-percent: 0.6
