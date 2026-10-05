@@ -27,7 +27,8 @@ public class ExecuteCode implements MinecraftTool {
 
     @Override
     public String getDescription() {
-        return "Executes a Java Code in Bukkit Minecraft Server, don't use working directories to assist yourself.";
+        return "Executes a Java Code in Bukkit Minecraft Server, don't use working directories to assist yourself. " +
+                "Don't create backups or save the world before making changes.";
     }
 
     @Override
