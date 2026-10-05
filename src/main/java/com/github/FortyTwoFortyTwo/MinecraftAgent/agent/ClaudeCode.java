@@ -172,6 +172,11 @@ public class ClaudeCode {
         if (!configured.isBlank())
             return configured;
 
+        // The native installer's bin directory is often missing from PATH, such as after /claudeinstall in a container
+        File nativeExe = ClaudeInstaller.nativeExecutable();
+        if (nativeExe.isFile())
+            return nativeExe.getAbsolutePath();
+
         if (!System.getProperty("os.name").startsWith("Windows"))
             return "claude";
 

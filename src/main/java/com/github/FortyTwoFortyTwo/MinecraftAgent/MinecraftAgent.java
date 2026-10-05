@@ -4,6 +4,7 @@ import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.AnthropicClient;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.BridgeHttpServer;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.commands.AgentCommand;
+import com.github.FortyTwoFortyTwo.MinecraftAgent.commands.InstallCommand;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.commands.PromptCommand;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.types.AgentType;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.types.ApiAgent;
@@ -55,6 +56,7 @@ public class MinecraftAgent extends JavaPlugin {
         CommandMap commandMap = Bukkit.getServer().getCommandMap();
         commandMap.register("agent", new AgentCommand(types));
         commandMap.register("agent", new PromptCommand(promptVote));
+        commandMap.register("agent", new InstallCommand());
 
         promptVote.start();
 

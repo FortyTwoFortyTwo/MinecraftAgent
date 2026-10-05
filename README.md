@@ -8,7 +8,7 @@ The project is split into three modules, located under [src/main/java/com/github
 
 - **McpBridge**: A Model Context Protocol (MCP) server that relays messages between the Minecraft server and an external AI agent (e.g. Claude Desktop).
 - **MinecraftAgent**: A Bukkit plugin that runs inside the Minecraft server and handles all in-game actions.
-- **Shared**: Code shared by both McpBridge and MinecraftAgent — primarily the definitions of tools available to the AI agent.
+- **Shared**: Code shared by both McpBridge and MinecraftAgent - primarily the definitions of tools available to the AI agent.
 
 ## Agent Prompts
 
@@ -83,6 +83,11 @@ The prompt gets every tool the chosen type has, so any player picked to submit c
 
 `/agent mcp` and `/agent code` go through Claude Code, so they can run on a Claude Pro/Max subscription instead of API credits.
 Run `claude setup-token` on the server host and put the token in `claude-code.oauth-token`, or leave it empty to use the host's `claude login` session.
+The token doesn't have to come from the server host, so on hosts without a shell or browser (e.g. Pterodactyl) run it on your own machine instead.
+
+If Claude Code isn't installed on the server host, `/claudeinstall` runs the official native installer (`curl -fsSL https://claude.ai/install.sh | bash`, or `install.ps1` on Windows) and streams its output to chat.
+It installs a single binary into `~/.local/bin` with no Node needed, which is used automatically when `claude-code.executable` is empty.
+On Pterodactyl the home directory is `/home/container`, so the install persists across restarts. The image needs `curl` and `bash`, and outbound internet access.
 `ANTHROPIC_API_KEY` is never passed through, since it would take priority over the subscription.
 
 ## Tools

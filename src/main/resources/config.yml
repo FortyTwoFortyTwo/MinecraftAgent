@@ -14,7 +14,8 @@ anthropic:
 
 # Used by /agent mcp and /agent code, which run the Claude Code CLI and can be billed to a Claude Pro/Max subscription instead of the API
 claude-code:
-  # Path to the claude executable. Leave empty to search PATH (on Windows, resolves npm's claude.cmd to its claude.exe).
+  # Path to the claude executable. Leave empty to use ~/.local/bin/claude from `/claudeinstall` if it exists,
+  # otherwise search PATH (on Windows, resolves npm's claude.cmd to its claude.exe).
   executable: ""
   # Token from running `claude setup-token`. Leave empty to use the host's own `claude login` session.
   oauth-token: ""
