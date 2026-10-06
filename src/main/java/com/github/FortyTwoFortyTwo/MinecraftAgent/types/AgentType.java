@@ -24,6 +24,11 @@ public interface AgentType {
     /** Runs the type, with args being everything after the type name. Must always end with progress.finish(), even if it never starts. */
     void run(CommandSender sender, String[] args, AgentProgress progress);
 
+    /** The prompt itself out of the args given to run, shown to players in chat */
+    default String prompt(String[] args) {
+        return String.join(" ", args);
+    }
+
     default List<String> tabComplete(String[] args) {
         return List.of();
     }

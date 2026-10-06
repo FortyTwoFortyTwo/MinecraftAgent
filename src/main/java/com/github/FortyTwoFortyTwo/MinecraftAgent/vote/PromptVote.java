@@ -448,7 +448,7 @@ public class PromptVote {
     }
 
     /** Shows a prompt in italics, wrapped in gray quotes */
-    private static Component quoted(String prompt) {
+    public static Component quoted(String prompt) {
         return Component.text("\"", NamedTextColor.GRAY)
                 .append(Component.text(prompt, NamedTextColor.WHITE, TextDecoration.ITALIC))
                 .append(Component.text("\""));

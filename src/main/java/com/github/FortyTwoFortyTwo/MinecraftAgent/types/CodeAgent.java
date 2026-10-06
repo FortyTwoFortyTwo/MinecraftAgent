@@ -33,6 +33,11 @@ public class CodeAgent implements AgentType {
     }
 
     @Override
+    public String prompt(String[] args) {
+        return String.join(" ", Arrays.copyOfRange(args, 1, args.length));
+    }
+
+    @Override
     public List<String> tabComplete(String[] args) {
         if (args.length == 1)
             return StringUtil.copyPartialMatches(args[0], paths, new ArrayList<>());
@@ -59,6 +64,6 @@ public class CodeAgent implements AgentType {
         new ClaudeCode(directory.toString(), sender)
                 .builtInTools("Read,Edit,Write,Glob,Grep")
                 .forwardOutput()
-                .runAsync(String.join(" ", Arrays.copyOfRange(args, 1, args.length)), progress);
+                .runAsync(prompt(args), progress);
     }
 }

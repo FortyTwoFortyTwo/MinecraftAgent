@@ -1,11 +1,15 @@
 package com.github.FortyTwoFortyTwo.MinecraftAgent.commands;
 
-import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.AgentProgress;
+import com.github.FortyTwoFortyTwo.MinecraftAgent.bossbar.AgentBossBar;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.types.AgentType;
+import com.github.FortyTwoFortyTwo.MinecraftAgent.vote.PromptVote;
+import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.defaults.BukkitCommand;
+import org.bukkit.entity.Player;
 import org.bukkit.util.StringUtil;
 import org.jetbrains.annotations.NotNull;
 
@@ -50,7 +54,15 @@ public class AgentCommand extends BukkitCommand {
             return true;
         }
 
-        type.run(sender, Arrays.copyOfRange(args, 1, args.length), AgentProgress.NONE);
+        String[] typeArgs = Arrays.copyOfRange(args, 1, args.length);
+        Bukkit.broadcast(MinecraftTools.PREFIX.append(Component.text("", NamedTextColor.GREEN)
+                .append(sender instanceof Player player ? player.displayName() : sender.name())
+                .append(Component.text(" ran a prompt: "))
+                .append(PromptVote.quoted(type.prompt(typeArgs)))));
+
+        AgentBossBar bar = new AgentBossBar(sender.name(), finished -> {});
+        bar.start();
+        type.run(sender, typeArgs, bar);
         return true;
     }
 }
