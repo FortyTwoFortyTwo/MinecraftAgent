@@ -145,6 +145,18 @@ Strings and anything else are hidden as their own `<text1>` tag, so only that va
 This tool is significantly more powerful than `RunConsoleCommand`, as it lets the agent do anything in the game the API allows.
 It can't reach the host though, as only classes allowed by [UntrustedCode](https://github.com/FortyTwoFortyTwo/MinecraftAgent/blob/main/src/main/java/com/github/FortyTwoFortyTwo/Shared/UntrustedCode.java) can be used.
 
+### MemoriseLocation, GetMemorisedLocations and ForgetLocation
+
+Lets the agent remember a position, or an area between two corners, under a name such as `steve_house`, so later prompts know about it.
+The agent is told to call `GetMemorisedLocations` whenever a prompt involves the world, not only when it names a place, and use them as context.
+For example, it can work out where "home" is, find somewhere to put a new build, or avoid building over another player's area.
+
+They're saved in `plugins/MinecraftAgent/locations.yml` with the world, coordinates and the player whose prompt saved it, up to 200 locations.
+When a place moves, e.g. a player says their house is somewhere else now or the agent moves or resizes a build there, the agent saves it again under the same name, and is shown the old location it replaced.
+
+Names are limited to 32 lowercase letters, digits and underscores rather than free text, as a prompt could otherwise leave instructions for every later run to read.
+Prompts built from server errors can only list them, not save or remove any.
+
 ### TextEditor
 
 This tool differs from the others in how it is defined for the agent.

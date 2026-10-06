@@ -82,6 +82,13 @@ public interface MinecraftTool {
         );
     }
 
+    default Map<String, Object> numberSchema(String description) {
+        return Map.of(
+                "type", "number",
+                "description", description
+        );
+    }
+
     /** Schema where every property is required */
     default McpSchema.JsonSchema objectSchema(Map<String, Object> properties) {
         return objectSchema(properties, Map.of());

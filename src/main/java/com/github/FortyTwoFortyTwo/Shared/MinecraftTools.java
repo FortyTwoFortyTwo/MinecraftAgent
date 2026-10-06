@@ -52,6 +52,8 @@ public class MinecraftTools {
     public static final List<MinecraftTool> list = List.of(
             new BroadcastMessage(),
             new ExecuteCode(),
+            new ForgetLocation(),
+            new GetMemorisedLocations(),
             new GetOnlinePlayers(),
             new GetPlayerLocation(),
             new GetPlayerPrompt(),
@@ -59,6 +61,7 @@ public class MinecraftTools {
             new GetRegistryValues(),
             new GetWorldInfo(),
             new ListWorkingDirectories(),
+            new MemoriseLocation(),
             new Ping(),
             new ResolvePath(),
             new RunConsoleCommand(),
