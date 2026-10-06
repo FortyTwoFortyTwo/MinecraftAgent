@@ -29,6 +29,21 @@ error-catcher:
 
 directories:
 
+# Commands the RunConsoleCommand tool refuses to run, including after "run" in /execute
+run-console-command:
+  # Command names or aliases, without the slash. Namespaced versions like minecraft:op are blocked too.
+  blocked-commands:
+    - "op"
+    - "deop"
+    - "whitelist"
+    - "ban"
+    - "ban-ip"
+    - "pardon"
+    - "pardon-ip"
+  # Blocks any command that needs one of these permissions. End with * to match every permission starting with it, e.g. "luckperms.*".
+  blocked-permissions:
+    - "luckperms.*"
+
 # Shown on the agent's progress boss bar while it's thinking, one picked at random every turn
 thinking-statuses:
   - "Thinking"

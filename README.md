@@ -127,7 +127,9 @@ The agent is generally good at knowing the correct command syntax.
 Any log output produced during command execution is captured, but hidden from the agent as a `<text1>` tag it can only show to players, since feedback can include text players wrote.
 The agent is still told whether the command exists.
 
-This tool comes with a risk of abuse as it grants access to all operator-level commands without restriction.
+This tool comes with a risk of abuse as it grants access to operator-level commands.
+Commands listed in `run-console-command.blocked-commands`, or needing a permission in `run-console-command.blocked-permissions`, are refused, including when run through `/execute ... run`.
+`ExecuteCode` can still dispatch commands itself, so these lists don't restrict it.
 
 ### ExecuteCode
 
