@@ -49,6 +49,8 @@ public class PromptVote {
     private Phase phase = Phase.IDLE;
     private BukkitTask timer;
     private BukkitTask phaseTask;
+    // Round started shortly after a winning prompt finishes
+    private BukkitTask followUpTask;
 
     public PromptVote(Map<String, AgentType> types) {
         this.types = types;
@@ -68,11 +70,32 @@ public class PromptVote {
         }, config().getInt("prompt-vote.interval-seconds") * 20L);
     }
 
+    /** Starts another round a few seconds after a winning prompt finishes, unless disabled or a round is already running by then */
+    private void scheduleFollowUp() {
+        int seconds = config().getInt("prompt-vote.start-after-finish-seconds");
+        if (seconds < 0 || timer == null)
+            return;
+
+        if (followUpTask != null)
+            followUpTask.cancel();
+
+        followUpTask = Bukkit.getScheduler().runTaskLater(MinecraftTools.plugin, () -> {
+            followUpTask = null;
+            if (config().getBoolean("prompt-vote.enabled"))
+                startRound();
+        }, seconds * 20L);
+    }
+
     public void stop() {
         if (timer != null)
             timer.cancel();
 
         timer = null;
+
+        if (followUpTask != null)
+            followUpTask.cancel();
+
+        followUpTask = null;
         reset();
 
         agentBars.forEach(AgentBossBar::hide);
@@ -382,7 +405,10 @@ public class PromptVote {
         List<String> args = new ArrayList<>(Arrays.asList(command).subList(1, command.length));
         args.addAll(Arrays.asList(winner.prompt().split(" ")));
 
-        AgentBossBar agentBar = new AgentBossBar(winner.displayName(), agentBars::remove);
+        AgentBossBar agentBar = new AgentBossBar(winner.displayName(), bar -> {
+            agentBars.remove(bar);
+            scheduleFollowUp();
+        });
         agentBars.add(agentBar);
         agentBar.start();
 

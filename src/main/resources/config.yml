@@ -63,6 +63,8 @@ prompt-vote:
   # The prompt runs as the player who submitted it, with all of that type's tools, and its replies are shown to everyone.
   type: "mcp"
   interval-seconds: 120
+  # Start another round this many seconds after a winning prompt finishes, unless one is already running. -1 to disable.
+  start-after-finish-seconds: 5
   # How many players are picked to submit a prompt each round. Players are picked from a shuffled list, so everyone gets a turn before anyone repeats.
   submitters: 4
   # Skip the round if fewer players than this are online
