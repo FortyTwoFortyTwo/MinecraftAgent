@@ -71,10 +71,10 @@ public class PromptVote {
         }, config().getInt("prompt-vote.interval-seconds") * 20L);
     }
 
-    /** Starts another round a few seconds after a winning prompt finishes, unless disabled or a round is already running by then */
+    /** Starts another round a few seconds after a winning prompt finishes, unless disabled, another winning prompt is still running, or a round is already running by then */
     private void scheduleFollowUp() {
         int seconds = config().getInt("prompt-vote.start-after-finish-seconds");
-        if (seconds < 0 || timer == null)
+        if (seconds < 0 || timer == null || !agentBars.isEmpty())
             return;
 
         if (followUpTask != null)
@@ -82,7 +82,7 @@ public class PromptVote {
 
         followUpTask = Bukkit.getScheduler().runTaskLater(MinecraftTools.plugin, () -> {
             followUpTask = null;
-            if (config().getBoolean("prompt-vote.enabled"))
+            if (config().getBoolean("prompt-vote.enabled") && agentBars.isEmpty())
                 startRound();
         }, seconds * 20L);
     }

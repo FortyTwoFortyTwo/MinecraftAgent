@@ -73,7 +73,7 @@ Tool calls are always made on behalf of the player who ran the command.
 ### [Prompt Vote](https://github.com/FortyTwoFortyTwo/MinecraftAgent/blob/main/src/main/java/com/github/FortyTwoFortyTwo/MinecraftAgent/vote/PromptVote.java)
 
 When `prompt-vote.enabled` is set, every `prompt-vote.interval-seconds` a few random players are asked to submit a prompt with `/prompt <prompt>`.
-A round also starts `prompt-vote.start-after-finish-seconds` after a winning prompt finishes, unless one is already running.
+A round also starts `prompt-vote.start-after-finish-seconds` after a winning prompt finishes, unless a round or another winning prompt is still running.
 Players are picked from a shuffled list, so everyone gets a turn before anyone is picked again, and the most recent winners, `winner-cooldown-percent` of online players, can't be picked again.
 Everyone on the server then votes by clicking a submission in chat. A tie is broken at random, and the round is skipped if nobody votes.
 The winning prompt runs as `/agent <prompt-vote.type>` on behalf of the player who submitted it, and the agent's replies are broadcast to the whole server.
