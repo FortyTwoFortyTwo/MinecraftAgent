@@ -99,7 +99,7 @@ On Pterodactyl the home directory is `/home/container`, so the install persists 
 
 Every prompt is treated as untrusted, as players can submit them through a [prompt vote](#prompt-vote), and anything the agent reads from the world could carry instructions:
 - `ExecuteCode` only allows the Bukkit, Paper and Adventure APIs and core `java.lang`/`java.util` classes, checked when the code compiles, so nothing reaches files, the network, processes, reflection or plugin configs (this one holds API keys).
-- Logged output, command feedback and error messages from `ExecuteCode` and `RunConsoleCommand` come back as tags like `<text1>`, as they could hold text players wrote, so instructions hidden in signs, books, item names or chat can't steer the agent.
+- Logged output and error messages from `ExecuteCode` and `RunConsoleCommand`, and the parts of command feedback players could have written, come back as tags like `<text1>`, as they could hold text players wrote, so instructions hidden in signs, books, item names or chat can't steer the agent.
   The agent can't read them, but `BroadcastMessage` (and `/agent api`'s replies) swap them back for the text, inserted as plain text so it can't add its own formatting or click events.
 - Files the agent views with `TextEditor` have to be readable to edit them, so viewing one disables `ExecuteCode` and `RunConsoleCommand` for the rest of the run instead.
 
@@ -124,8 +124,12 @@ These tools allow the agent to query the registry directly to get up-to-date val
 A simple but powerful tool that lets the AI run any Minecraft console command.
 The agent is generally good at knowing the correct command syntax.
 
-Any log output produced during command execution is captured, but hidden from the agent as a `<text1>` tag it can only show to players, since feedback can include text players wrote.
-The agent is still told whether the command exists.
+Command feedback is collected as components, so the agent can read the game's own wording while text players could have written is hidden as `<text1>` tags it can only show to players, e.g. `Gave 1 [Diamond] to <text1>`.
+Translations the server knows and literal text without letters, like numbers and coordinates, are shown; any other literal text, unknown translation keys, selectors and NBT are hidden.
+A message that would need more than 10 tags, like `/data get`'s NBT, is hidden as a whole.
+A command with vanilla's name runs vanilla's, e.g. `kick` runs `minecraft:kick` even if a plugin took over `kick`, unless the agent prefixes the plugin's namespace.
+Plugin commands run as the real console instead, as some refuse any other sender, so their feedback is only logged and hidden as a whole.
+The agent is always told whether the command exists.
 
 This tool comes with a risk of abuse as it grants access to operator-level commands.
 Commands listed in `run-console-command.blocked-commands`, or needing a permission in `run-console-command.blocked-permissions`, are refused, including when run through `/execute ... run`.
@@ -136,7 +140,7 @@ Commands listed in `run-console-command.blocked-commands`, or needing a permissi
 Allows the agent to write and immediately execute Java code within the Minecraft server, giving it the ability to perform almost any operation supported by the available packages.
 
 Compile errors are sent back to the agent, which can then attempt to fix the code and retry.
-For runtime exceptions it only gets the exception type, as the message and any logged output are hidden like `RunConsoleCommand`'s.
+For runtime exceptions it only gets the exception type, as the message and any logged output are hidden.
 
 To read results, the code returns values with [`Output.put(name, value)`](https://github.com/FortyTwoFortyTwo/MinecraftAgent/blob/main/src/main/java/com/github/FortyTwoFortyTwo/Shared/Output.java).
 Values that can't hold text players wrote, such as numbers, booleans, enums like `Material`, registry keys, UUIDs and locations, are shown to the agent as is, so it can reason about them.

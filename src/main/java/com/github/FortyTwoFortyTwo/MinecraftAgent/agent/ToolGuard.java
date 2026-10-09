@@ -2,6 +2,7 @@ package com.github.FortyTwoFortyTwo.MinecraftAgent.agent;
 
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTool;
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
+import com.github.FortyTwoFortyTwo.Shared.MixedText;
 import com.github.FortyTwoFortyTwo.Shared.PlayerText;
 import com.google.gson.JsonObject;
 
@@ -75,6 +76,7 @@ public class ToolGuard {
                 texts.put(name, text.text());
                 yield "<" + name + ">";
             }
+            case MixedText text -> String.join("", text.parts().stream().map(part -> (String) hide(part)).toList());
             case Map<?, ?> map -> hideMap(map);
             case List<?> list -> new ArrayList<>(list.stream().map(item -> hide((Serializable) item)).toList());
             default -> value;

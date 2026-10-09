@@ -2,26 +2,34 @@ package com.github.FortyTwoFortyTwo.Shared.Tools;
 
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTool;
 import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
+import com.github.FortyTwoFortyTwo.Shared.MixedText;
 import com.github.FortyTwoFortyTwo.Shared.PlayerText;
 import com.github.FortyTwoFortyTwo.Shared.appender.CaptureLogsAppender;
 import com.google.gson.JsonObject;
 import io.modelcontextprotocol.spec.McpSchema;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandException;
+import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class RunConsoleCommand implements MinecraftTool {
 
+    private static final String VANILLA = "minecraft:";
+
     @Override
     public String getDescription() {
-        return "Runs a command on the Minecraft server console with operator-level privileges.";
+        return "Runs a command on the Minecraft server console with operator-level privileges. " +
+                "Vanilla commands are run over a plugin's with the same name; prefix the plugin's namespace to run its instead, e.g. essentials:kick.";
     }
 
     @Override
@@ -50,28 +58,48 @@ public class RunConsoleCommand implements MinecraftTool {
         final String cmd = command.startsWith("/") ? command.substring(1) : command;
 
         return runTask(() -> {
-            String blocked = findBlocked(cmd);
+            String line = preferVanilla(cmd);
+            String blocked = findBlocked(line);
             if (blocked != null)
                 return Map.of("success", false, "error", "Command is blocked: " + blocked);
 
-            // Capture logs for AI to analyze. Command feedback can include text from the world, e.g. /data get on a sign or book.
+            // Feedback can include text from the world, e.g. a player's name or /data get on a sign or book,
+            // so vanilla's is kept as components to only hide those parts. Plugin commands can refuse anything but the real console,
+            // so they keep it, and their feedback is only logged, which stays hidden as a whole.
+            boolean vanilla = line.toLowerCase().startsWith(VANILLA);
+            List<Component> feedback = new ArrayList<>();
+            CommandSender sender = vanilla ? Bukkit.createCommandSender(feedback::add) : Bukkit.getConsoleSender();
             CaptureLogsAppender capture = new CaptureLogsAppender();
+            Supplier<Serializable> output = () -> vanilla ? MixedText.of(feedback) : PlayerText.of(capture.getOutput());
 
             try {
-                // The feedback is hidden from the agent, so at least tell it when the command doesn't exist
-                if (!Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd))
-                    return Map.of("success", false, "error", "Unknown command: " + cmd.split(" ")[0]);
+                if (!Bukkit.dispatchCommand(sender, line))
+                    return Map.of("success", false, "error", "Unknown command: " + line.split(" ")[0]);
 
-                return Map.of("success", true, "output", PlayerText.of(capture.getOutput()));
+                return Map.of("success", true, "output", output.get());
             } catch (CommandException e) {
                 // Thrown by the command's own code, the real error is the cause
                 Throwable cause = e.getCause() != null ? e.getCause() : e;
-                return Map.of("success", false, "error", cause.getClass().getName(),
-                        "errorMessage", PlayerText.of(cause.getMessage()), "output", PlayerText.of(capture.getOutput()));
+                return Map.of("success", false, "error", cause.getClass().getName(), "errorMessage", PlayerText.of(cause.getMessage()),
+                        "output", output.get());
             } finally {
                 capture.end();
             }
         });
+    }
+
+    /**
+     * Runs vanilla's command when there's one by that name, even if a plugin took over its label, as that's the syntax the agent knows.
+     * Namespaced labels are kept as is, so a plugin's command can still be picked, e.g. essentials:kick.
+     */
+    private static String preferVanilla(String cmd) {
+        String line = cmd.trim();
+        String label = line.split("\\s+")[0];
+        if (label.contains(":"))
+            return line;
+
+        String vanilla = VANILLA + label.toLowerCase();
+        return Bukkit.getCommandMap().getKnownCommands().containsKey(vanilla) ? vanilla + line.substring(label.length()) : line;
     }
 
     /**
