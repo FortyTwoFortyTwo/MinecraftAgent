@@ -32,19 +32,10 @@ public class AnthropicClient {
             <gold>, <aqua>, <bold>, <italic>, <newline>. Escape a literal < as \\<. Do not use markdown, it will not render in game.
             """;
 
-    private final String model;
-    private final int maxTokens;
-    private final int maxTurns;
-    private final int maxTotalTokens;
-    private final String apiKey;
     private final HttpClient http = HttpClient.newHttpClient();
 
-    public AnthropicClient(FileConfiguration config) {
-        this.model = config.getString("anthropic.model");
-        this.maxTokens = config.getInt("anthropic.max-tokens");
-        this.maxTurns = config.getInt("anthropic.max-turns");
-        this.maxTotalTokens = config.getInt("anthropic.max-total-tokens");
-        this.apiKey = config.getString("anthropic.secret");
+    private static FileConfiguration config() {
+        return MinecraftTools.plugin.getConfig();
     }
 
     /** Runs a prompt, only offering and allowing the given tools, plus web search and fetch */
@@ -71,6 +62,8 @@ public class AnthropicClient {
     }
 
     private void run(CommandSender sender, List<JsonObject> messages, String system, List<MinecraftTool> tools, ToolGuard guard, AgentProgress progress) throws IOException {
+        int maxTurns = config().getInt("anthropic.max-turns");
+        int maxTotalTokens = config().getInt("anthropic.max-total-tokens");
         int totalTokensUsed = 0;
 
         for (int turn = 0; turn < maxTurns; turn++) {
@@ -146,15 +139,15 @@ public class AnthropicClient {
 
     private JsonObject doRequest(List<JsonObject> messages, String system, List<MinecraftTool> tools) throws IOException {
         JsonObject body = new JsonObject();
-        body.addProperty("model", model);
-        body.addProperty("max_tokens", maxTokens);
+        body.addProperty("model", config().getString("anthropic.model"));
+        body.addProperty("max_tokens", config().getInt("anthropic.max-tokens"));
         body.add("tools", buildToolDefinitions(tools));
         body.add("messages", MinecraftTools.GSON.toJsonTree(messages));
         body.addProperty("system", system + "\n" + FORMATTING_PROMPT);
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("https://api.anthropic.com/v1/messages"))
-                .header("x-api-key", apiKey)
+                .header("x-api-key", config().getString("anthropic.secret"))
                 .header("anthropic-version", "2023-06-01")
                 .header("Content-Type", "application/json")
                 .timeout(Duration.ofSeconds(60))

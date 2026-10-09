@@ -2,10 +2,10 @@ package com.github.FortyTwoFortyTwo.MinecraftAgent.types;
 
 import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.AgentProgress;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.ClaudeCode;
+import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.util.StringUtil;
 
 import java.nio.file.Path;
@@ -16,10 +16,9 @@ import java.util.List;
 /** Claude Code editing files on the host, with no Minecraft tools */
 public class CodeAgent implements AgentType {
 
-    private final List<String> paths;
-
-    public CodeAgent(FileConfiguration config) {
-        paths = config.getStringList("directories");
+    /** Read on every use, so /admin reloadconfig applies without a restart */
+    private static List<String> paths() {
+        return MinecraftTools.plugin.getConfig().getStringList("directories");
     }
 
     @Override
@@ -40,7 +39,7 @@ public class CodeAgent implements AgentType {
     @Override
     public List<String> tabComplete(String[] args) {
         if (args.length == 1)
-            return StringUtil.copyPartialMatches(args[0], paths, new ArrayList<>());
+            return StringUtil.copyPartialMatches(args[0], paths(),new ArrayList<>());
 
         return List.of();
     }
@@ -54,6 +53,7 @@ public class CodeAgent implements AgentType {
         }
 
         // Only allow directories listed in config
+        List<String> paths = paths();
         Path directory = Path.of(args[0]).toAbsolutePath().normalize();
         if (paths.stream().noneMatch(path -> Path.of(path).toAbsolutePath().normalize().equals(directory))) {
             sender.sendMessage(Component.text("Directory must be one of: " + String.join(", ", paths), NamedTextColor.RED));

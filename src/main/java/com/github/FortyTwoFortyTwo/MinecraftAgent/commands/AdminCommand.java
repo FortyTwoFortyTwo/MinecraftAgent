@@ -2,6 +2,7 @@ package com.github.FortyTwoFortyTwo.MinecraftAgent.commands;
 
 import com.github.FortyTwoFortyTwo.MinecraftAgent.agent.ClaudeInstaller;
 import com.github.FortyTwoFortyTwo.MinecraftAgent.MinecraftAgent;
+import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.CommandSender;
@@ -39,6 +40,9 @@ public class AdminCommand extends BukkitCommand {
 
         add(new Subcommand("denyprompt", "<player>", "Stops a player's prompt in the current prompt vote from being chosen",
                 this::denyprompt, this::denypromptTabComplete));
+
+        add(new Subcommand("reloadconfig", "", "Reloads config.yml, bridge settings still need a restart",
+                this::reloadconfig));
     }
 
     private void add(Subcommand subcommand) {
@@ -97,5 +101,10 @@ public class AdminCommand extends BukkitCommand {
             return StringUtil.copyPartialMatches(args[0], MinecraftAgent.promptVote.deniable(), new ArrayList<>());
 
         return List.of();
+    }
+
+    public void reloadconfig(CommandSender sender, String[] args) {
+        MinecraftTools.plugin.reloadConfig();
+        sender.sendMessage(Component.text("Reloaded config.yml", NamedTextColor.GREEN));
     }
 }

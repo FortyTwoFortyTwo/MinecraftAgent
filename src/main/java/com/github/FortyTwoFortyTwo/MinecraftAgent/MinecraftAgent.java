@@ -37,16 +37,16 @@ public class MinecraftAgent extends JavaPlugin {
 
         saveDefaultConfig();
 
-        AnthropicClient anthropic = new AnthropicClient(getConfig());
+        AnthropicClient anthropic = new AnthropicClient();
 
         // Catch any errors, attached to the root logger so ALL plugins are covered
-        errorAppender = new ErrorCatcherAppender(anthropic, getConfig());
+        errorAppender = new ErrorCatcherAppender(anthropic);
         errorAppender.start();
         rootLoggerContext().getRootLogger().addAppender(errorAppender);
 
         // Agent types available through /agent <type>, by name
         Map<String, AgentType> types = new LinkedHashMap<>();
-        for (AgentType type : List.of(new ApiAgent(anthropic), new McpAgent(), new CodeAgent(getConfig())))
+        for (AgentType type : List.of(new ApiAgent(anthropic), new McpAgent(), new CodeAgent()))
             types.put(type.name(), type);
 
         types = Collections.unmodifiableMap(types);

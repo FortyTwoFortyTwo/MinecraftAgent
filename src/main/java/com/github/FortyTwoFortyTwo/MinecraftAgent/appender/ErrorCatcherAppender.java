@@ -10,7 +10,6 @@ import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.appender.AbstractAppender;
 import org.apache.logging.log4j.core.config.Property;
 import org.bukkit.Bukkit;
-import org.bukkit.configuration.file.FileConfiguration;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -29,7 +28,6 @@ public class ErrorCatcherAppender extends AbstractAppender {
 
     private final AnthropicClient anthropic;
     private final List<MinecraftTool> tools;
-    private final int maxRunsPerHour;
     private final Set<String> previous = Collections.newSetFromMap(new LinkedHashMap<>() {
         @Override
         protected boolean removeEldestEntry(Map.Entry<String, Boolean> eldest) {
@@ -38,13 +36,11 @@ public class ErrorCatcherAppender extends AbstractAppender {
     });
     private final Deque<Long> recentRuns = new ArrayDeque<>();
 
-    public ErrorCatcherAppender(AnthropicClient anthropic, FileConfiguration config) {
+    public ErrorCatcherAppender(AnthropicClient anthropic) {
         super("ErrorCatcher", null, null, true, Property.EMPTY_ARRAY);
         this.anthropic = anthropic;
         // Error messages can contain player-controlled text, so only offer tools that are safe for untrusted input
-        this.tools = MinecraftTools.list.stream().filter(tool -> !tool.isBlockedForUntrusted()).toList();
-        this.maxRunsPerHour = config.getInt("error-catcher.max-runs-per-hour");
-    }
+        this.tools = MinecraftTools.list.stream().filter(tool -> !tool.isBlockedForUntrusted()).toList();    }
 
     @Override
     public synchronized void append(LogEvent event) {
@@ -67,7 +63,7 @@ public class ErrorCatcherAppender extends AbstractAppender {
         while (!recentRuns.isEmpty() && now - recentRuns.peekFirst() > 3_600_000)
             recentRuns.pollFirst();
 
-        if (recentRuns.size() >= maxRunsPerHour)
+        if (recentRuns.size() >= MinecraftTools.plugin.getConfig().getInt("error-catcher.max-runs-per-hour"))
             return;
 
         recentRuns.addLast(now);

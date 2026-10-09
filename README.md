@@ -10,6 +10,8 @@ The project is split into three modules, located under [src/main/java/com/github
 - **MinecraftAgent**: A Bukkit plugin that runs inside the Minecraft server and handles all in-game actions.
 - **Shared**: Code shared by both McpBridge and MinecraftAgent - primarily the definitions of tools available to the AI agent.
 
+Operators can use `/admin reloadconfig` to apply changes to `config.yml` without a restart, except for the `bridge` settings.
+
 ## Agent Prompts
 
 [This directory](https://github.com/FortyTwoFortyTwo/MinecraftAgent/tree/main/src/main/java/com/github/FortyTwoFortyTwo/MinecraftAgent/agent) provides several ways to send prompts to an AI agent:
