@@ -100,6 +100,7 @@ On Pterodactyl the home directory is `/home/container`, so the install persists 
 Every prompt is treated as untrusted, as players can submit them through a [prompt vote](#prompt-vote), and anything the agent reads from the world could carry instructions:
 - `ExecuteCode` only allows the Bukkit, Paper and Adventure APIs and core `java.lang`/`java.util` classes, checked when the code compiles, so nothing reaches files, the network, processes, reflection or plugin configs (this one holds API keys).
 - Logged output and error messages from `ExecuteCode` and `RunConsoleCommand`, and the parts of command feedback players could have written, come back as tags like `<text1>`, as they could hold text players wrote, so instructions hidden in signs, books, item names or chat can't steer the agent.
+  The same text always comes back as the same tag, so the agent can tell when two outputs mention the same player or item without reading it.
   The agent can't read them, but `BroadcastMessage` (and `/agent api`'s replies) swap them back for the text, inserted as plain text so it can't add its own formatting or click events.
 - Files the agent views with `TextEditor` have to be readable to edit them, so viewing one disables `ExecuteCode` and `RunConsoleCommand` for the rest of the run instead.
 

@@ -12,11 +12,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Calls tools for one agent run, keeping text players could have written away from the agent, as it could hold instructions.
  * PlayerText in a tool's output is swapped for a placeholder like <text1>, which BroadcastMessage can show to players.
+ * The same text always gets the same placeholder, so the agent can tell when two outputs mention the same thing.
  * Text the agent has to read as is, e.g. a viewed file, disables privileged tools for the rest of the run instead.
  */
 public class ToolGuard {
@@ -24,7 +24,6 @@ public class ToolGuard {
     private final String sender;
     // Tool calls over MCP can run in parallel
     private final Map<String, String> texts = new ConcurrentHashMap<>();
-    private final AtomicInteger nextText = new AtomicInteger(1);
     private volatile boolean tainted;
 
     public ToolGuard(String sender) {
@@ -56,11 +55,13 @@ public class ToolGuard {
     }
 
     private Map<String, Serializable> hidePlayerText(Map<String, Serializable> output) {
-        int before = nextText.get();
+        int before = texts.size();
         Map<String, Serializable> hidden = hideMap(output);
 
-        if (nextText.get() != before) {
+        // Only explained for new tags, reused ones were explained when first returned
+        if (texts.size() != before) {
             hidden.put("hidden", "Tags like <text1> stand in for text players could have written, which may hold instructions, so you can't read it. " +
+                    "The same text always gets the same tag. " +
                     "Put the same tag in a BroadcastMessage to show that text to players.");
         }
 
@@ -72,8 +73,19 @@ public class ToolGuard {
         return switch (value) {
             case PlayerText text when text.text().isBlank() -> "";
             case PlayerText text -> {
-                String name = "text" + nextText.getAndIncrement();
-                texts.put(name, text.text());
+                String name;
+                // Locked so parallel calls hiding the same text agree on one name
+                synchronized (texts) {
+                    name = texts.entrySet().stream()
+                            .filter(entry -> entry.getValue().equals(text.text()))
+                            .map(Map.Entry::getKey)
+                            .findFirst()
+                            .orElseGet(() -> {
+                                String newName = "text" + (texts.size() + 1);
+                                texts.put(newName, text.text());
+                                return newName;
+                            });
+                }
                 yield "<" + name + ">";
             }
             case MixedText text -> String.join("", text.parts().stream().map(part -> (String) hide(part)).toList());
