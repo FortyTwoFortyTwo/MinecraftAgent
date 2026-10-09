@@ -6,6 +6,7 @@ import com.github.FortyTwoFortyTwo.Shared.MinecraftTools;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
+import net.kyori.adventure.text.event.ClickCallback;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -330,10 +331,11 @@ public class PromptVote {
                     .hoverEvent(HoverEvent.showText(Component.text("Click to vote for ", NamedTextColor.GREEN)
                             .append(submission.displayName())
                             .append(Component.text("'s prompt"))))
+                    // Callbacks default to a single use across every player, so allow any number of votes
                     .clickEvent(ClickEvent.callback(audience -> {
                         if (audience instanceof Player player)
                             vote(player, submission);
-                    })));
+                    }, options -> options.uses(ClickCallback.UNLIMITED_USES))));
         }
 
         bossBar.start(voteSeconds, BossBar.Color.GREEN, seconds -> Component.text(
