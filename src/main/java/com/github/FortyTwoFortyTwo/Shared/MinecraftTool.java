@@ -24,7 +24,7 @@ public interface MinecraftTool {
         return null;
     }
 
-    /** Runs the tool, returning an "error" key for anything the model got wrong. Call safeExecute rather than this. */
+    /** Runs the tool, returning an "error" key or throwing ToolInputException for anything the model got wrong. Call safeExecute rather than this. */
     Map<String, Serializable> execute(JsonObject input) throws Exception;
 
     /** Same as execute, but a failing tool is reported back as an error rather than thrown, so the model can retry */
@@ -32,6 +32,12 @@ public interface MinecraftTool {
         try {
             return execute(input);
         } catch (Exception e) {
+            // Could be wrapped by runTask
+            for (Throwable cause = e; cause != null; cause = cause.getCause()) {
+                if (cause instanceof ToolInputException inputException)
+                    return Map.of("error", inputException.getMessage());
+            }
+
             return Map.of("error", String.valueOf(e));
         }
     }
@@ -82,6 +88,10 @@ public interface MinecraftTool {
         );
     }
 
+    default Map<String, Object> numberSchema() {
+        return Map.of("type", "number");
+    }
+
     default Map<String, Object> numberSchema(String description) {
         return Map.of(
                 "type", "number",
@@ -98,6 +108,19 @@ public interface MinecraftTool {
         Map<String, Object> properties = new HashMap<>(required);
         properties.putAll(optional);
         return new McpSchema.JsonSchema("object", properties, new ArrayList<>(required.keySet()), false, null, null);
+    }
+
+    /** Schema of an object nested in a tool's input, as JsonSchema can't have a description */
+    default Map<String, Object> nestedObjectSchema(String description, Map<String, Object> required, Map<String, Object> optional) {
+        Map<String, Object> properties = new HashMap<>(required);
+        properties.putAll(optional);
+        return Map.of(
+                "type", "object",
+                "description", description,
+                "properties", properties,
+                "required", new ArrayList<>(required.keySet()),
+                "additionalProperties", false
+        );
     }
 
     default boolean isAuthorized(HttpExchange exchange, String secret) {

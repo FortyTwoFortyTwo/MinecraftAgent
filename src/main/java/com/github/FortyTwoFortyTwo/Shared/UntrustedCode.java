@@ -43,7 +43,9 @@ public class UntrustedCode {
             "org.bukkit.plugin.Plugin", "org.bukkit.plugin.PluginManager", "org.bukkit.plugin.EventExecutor",
             "java.util.logging.Logger", "java.util.logging.Level",
             // Returns values to the agent, limited to put
-            "com.github.FortyTwoFortyTwo.Shared.Output");
+            "com.github.FortyTwoFortyTwo.Shared.Output",
+            // Saves memories, limited to memorise
+            "com.github.FortyTwoFortyTwo.Shared.memories.Memories");
 
     // Classes, or packages ending in '.', inside ALLOWED that can't be used
     private static final List<String> BLOCKED = List.of(
@@ -63,7 +65,8 @@ public class UntrustedCode {
             "org.bukkit.plugin.PluginManager", Set.of("getPlugin", "getPlugins", "isPluginEnabled", "registerEvents", "registerEvent", "callEvent"),
             // create builds an executor from a reflected Method
             "org.bukkit.plugin.EventExecutor", Set.of("execute"),
-            "com.github.FortyTwoFortyTwo.Shared.Output", Set.of("put"));
+            "com.github.FortyTwoFortyTwo.Shared.Output", Set.of("put"),
+            "com.github.FortyTwoFortyTwo.Shared.memories.Memories", Set.of("memorise"));
 
     /** Collects into blocked every class or member the code uses that isn't allowed, as javac analyses each class. Call before the task runs. */
     public static void check(JavacTask task, Set<String> blocked) {

@@ -10,8 +10,7 @@ public interface AgentType {
 
     String SYSTEM_PROMPT =
             "You are an agent in a Minecraft server with operator-level control. Act with your tools rather than describing what you'd do, and don't make backups first.\n" +
-            "For anything involving the world, call GetMemorisedLocations early and use the places as context, e.g. where home is or whose area not to build over. " +
-            "Memorise new places and update ones that moved.\n" +
+            "For anything involving the world, call GetMemories early, and Memorise anything worth coming back to.\n" +
             "Viewing a file disables ExecuteCode and RunConsoleCommand for the rest of the run, so make those changes first.";
 
     /** Name typed after /agent */

@@ -152,14 +152,27 @@ Strings and anything else are hidden as their own `<text1>` tag, so only that va
 This tool is significantly more powerful than `RunConsoleCommand`, as it lets the agent do anything in the game the API allows.
 It can't reach the host though, as only classes allowed by [UntrustedCode](https://github.com/FortyTwoFortyTwo/MinecraftAgent/blob/main/src/main/java/com/github/FortyTwoFortyTwo/Shared/UntrustedCode.java) can be used.
 
-### MemoriseLocation, GetMemorisedLocations and ForgetLocation
+### Memorise, GetMemories and ForgetMemory
 
-Lets the agent remember a position, or an area between two corners, under a name such as `steve_house`, so later prompts know about it.
-The agent is told to call `GetMemorisedLocations` whenever a prompt involves the world, not only when it names a place, and use them as context.
-For example, it can work out where "home" is, find somewhere to put a new build, or avoid building over another player's area.
+Lets the agent remember things under a name such as `steve_house`, so later prompts know about them.
+`Memorise` takes the name and exactly one object for what to remember, e.g. `{"name": "steve_dog", "entity": {"uuid": "..."}}`:
+- `location` is a position, or an area between two corners.
+- `entity` is an entity by its UUID, e.g. a player's pet. `GetMemories` shows where it is now, or where it was last seen if its chunk isn't loaded.
+- `item` is a copy of an item, either the one a player is holding or one in `/give` syntax, as a template rather than tracking the item itself.
 
-They're saved in `plugins/MinecraftAgent/locations.yml` with the world, coordinates and the player whose prompt saved it, up to 200 locations.
-When a place moves, e.g. a player says their house is somewhere else now or the agent moves or resizes a build there, the agent saves it again under the same name, and is shown the old location it replaced.
+Each type is its own class in the [memories](https://github.com/FortyTwoFortyTwo/MinecraftAgent/tree/main/src/main/java/com/github/FortyTwoFortyTwo/Shared/memories) package, which gives `Memorise` its object's schema and turns it into what's saved, so a new type only needs a class there, listed in `Memories.TYPES`, plus a `Memories.memorise` overload for `ExecuteCode`.
+
+`ExecuteCode`'s code can also save them with `Memories.memorise(name, ...)`, given a location, two corners, an entity or an item, e.g. to find and save the nearest wolf to a player in one step.
+It can only save, not read them, and only while the code runs, not from tasks or listeners it registers, which could otherwise keep saving after the prompt.
+What it saved is listed in the result, with the player whose prompt it ran for as who saved it.
+
+The agent is told to call `GetMemories` whenever a prompt involves the world, not only when it names a place, and use them as context.
+For example, it can work out where "home" is, find somewhere to put a new build, avoid building over another player's area, or find a player's dog.
+
+They're saved in `plugins/MinecraftAgent/memories.yml` with the player whose prompt saved it, up to 200 in total. An older `locations.yml` is renamed to it.
+When a place moves, e.g. a player says their house is somewhere else now or the agent moves or resizes a build there, the agent saves it again under the same name, and is shown the old memory it replaced.
+
+Entities' custom names aren't kept, and items' custom names are hidden as `<text1>` tags, as players can set either.
 
 Names are limited to 32 lowercase letters, digits and underscores rather than free text, as a prompt could otherwise leave instructions for every later run to read.
 Prompts built from server errors can only list them, not save or remove any.
