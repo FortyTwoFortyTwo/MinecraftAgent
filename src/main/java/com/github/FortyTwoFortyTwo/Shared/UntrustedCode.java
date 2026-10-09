@@ -40,7 +40,7 @@ public class UntrustedCode {
             "java.lang.AutoCloseable", "java.lang.Cloneable", "java.lang.Throwable",
             "java.lang.Override", "java.lang.Deprecated", "java.lang.SuppressWarnings", "java.lang.FunctionalInterface", "java.lang.SafeVarargs",
             // Needed to schedule tasks and register listeners, limited to the members in MEMBERS
-            "org.bukkit.plugin.Plugin", "org.bukkit.plugin.PluginManager",
+            "org.bukkit.plugin.Plugin", "org.bukkit.plugin.PluginManager", "org.bukkit.plugin.EventExecutor",
             "java.util.logging.Logger", "java.util.logging.Level",
             // Returns values to the agent, limited to put
             "com.github.FortyTwoFortyTwo.Shared.Output");
@@ -60,7 +60,9 @@ public class UntrustedCode {
     // For these classes, only these members can be used
     private static final Map<String, Set<String>> MEMBERS = Map.of(
             "org.bukkit.plugin.Plugin", Set.of("getName", "getLogger", "getServer", "isEnabled"),
-            "org.bukkit.plugin.PluginManager", Set.of("getPlugin", "getPlugins", "isPluginEnabled", "registerEvents", "callEvent"),
+            "org.bukkit.plugin.PluginManager", Set.of("getPlugin", "getPlugins", "isPluginEnabled", "registerEvents", "registerEvent", "callEvent"),
+            // create builds an executor from a reflected Method
+            "org.bukkit.plugin.EventExecutor", Set.of("execute"),
             "com.github.FortyTwoFortyTwo.Shared.Output", Set.of("put"));
 
     /** Collects into blocked every class or member the code uses that isn't allowed, as javac analyses each class. Call before the task runs. */
