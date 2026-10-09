@@ -47,7 +47,7 @@ public class AnthropicClient {
         this.apiKey = config.getString("anthropic.secret");
     }
 
-    /** Runs a prompt, only offering and allowing the given tools */
+    /** Runs a prompt, only offering and allowing the given tools, plus web search and fetch */
     public void sendMessage(CommandSender sender, String userMessage, String system, List<MinecraftTool> tools) {
         sendMessage(sender, userMessage, system, tools, AgentProgress.NONE);
     }
@@ -123,6 +123,8 @@ public class AnthropicClient {
 
             switch (stopReason) {
                 case "tool_use" -> messages.add(message("user", toolResults));
+                // A long running server tool like web search was paused, sending the conversation back as is continues it
+                case "pause_turn" -> {}
                 case "end_turn" -> {
                     sender.sendMessage(Component.text("[Tokens used: " + totalTokensUsed + "]", NamedTextColor.GRAY));
                     return;
@@ -207,7 +209,18 @@ public class AnthropicClient {
             array.add(object);
         }
 
+        // Server tools run on Anthropic's side, their results come back in the same response rather than as tool_use
+        array.add(serverTool("web_search_20260209", "web_search"));
+        array.add(serverTool("web_fetch_20260209", "web_fetch"));
+
         return array;
+    }
+
+    private static JsonObject serverTool(String type, String name) {
+        JsonObject object = new JsonObject();
+        object.addProperty("type", type);
+        object.addProperty("name", name);
+        return object;
     }
 
     private static JsonObject message(String role, String content) {

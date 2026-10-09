@@ -62,7 +62,7 @@ public class CodeAgent implements AgentType {
         }
 
         new ClaudeCode(directory.toString(), sender)
-                .builtInTools("Read,Edit,Write,Glob,Grep")
+                .builtInTools("Read,Edit,Write,Glob,Grep,WebSearch,WebFetch")
                 .forwardOutput()
                 .runAsync(prompt(args), progress);
     }

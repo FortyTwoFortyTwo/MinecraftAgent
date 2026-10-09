@@ -28,8 +28,9 @@ public class McpAgent implements AgentType {
 
     @Override
     public void run(CommandSender sender, String[] args, AgentProgress progress) {
-        // Only the Minecraft tools, the same set api gets, with none of Claude Code's built-in tools
+        // The Minecraft tools and web access, the same set api gets, with none of Claude Code's other built-in tools
         new ClaudeCode(MinecraftTools.plugin.getDataFolder().getAbsolutePath(), sender)
+                .builtInTools("WebSearch,WebFetch")
                 .systemPrompt(MCP_SYSTEM_PROMPT)
                 .minecraftTools()
                 .runAsync(String.join(" ", args), progress);
